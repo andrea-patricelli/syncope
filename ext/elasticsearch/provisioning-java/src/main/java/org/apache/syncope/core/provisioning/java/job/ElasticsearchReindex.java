@@ -18,11 +18,17 @@
  */
 package org.apache.syncope.core.provisioning.java.job;
 
+import java.io.IOException;
+import java.util.Collections;
+import java.util.concurrent.ExecutionException;
 import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.core.persistence.api.dao.AnyDAO;
 import org.apache.syncope.core.persistence.api.dao.AnyObjectDAO;
 import org.apache.syncope.core.persistence.api.dao.GroupDAO;
 import org.apache.syncope.core.persistence.api.dao.UserDAO;
+import org.apache.syncope.core.persistence.api.dao.search.OrderByClause;
+import org.apache.syncope.core.persistence.api.entity.task.PropagationTask;
+import org.apache.syncope.core.persistence.api.entity.task.Task;
 import org.apache.syncope.core.persistence.api.entity.task.TaskExec;
 import org.apache.syncope.core.spring.security.AuthContextUtils;
 import org.apache.syncope.ext.elasticsearch.client.ElasticsearchIndexManager;
@@ -63,28 +69,22 @@ public class ElasticsearchReindex extends AbstractSchedTaskJobDelegate {
             LOG.debug("Start rebuilding indexes");
 
             try {
-                if (indexManager.existsIndex(AuthContextUtils.getDomain(), AnyTypeKind.USER)) {
-                    indexManager.removeIndex(AuthContextUtils.getDomain(), AnyTypeKind.USER);
-                }
-                indexManager.createIndex(AuthContextUtils.getDomain(), AnyTypeKind.USER);
+                removeIndexIfExists(AnyTypeKind.USER.name());
+                removeIndexIfExists(AnyTypeKind.GROUP.name());
+                removeIndexIfExists(AnyTypeKind.ANY_OBJECT.name());
+                removeIndexIfExists(Task.class.getSimpleName());
 
-                if (indexManager.existsIndex(AuthContextUtils.getDomain(), AnyTypeKind.GROUP)) {
-                    indexManager.removeIndex(AuthContextUtils.getDomain(), AnyTypeKind.GROUP);
-                }
-                indexManager.createIndex(AuthContextUtils.getDomain(), AnyTypeKind.GROUP);
-
-                if (indexManager.existsIndex(AuthContextUtils.getDomain(), AnyTypeKind.ANY_OBJECT)) {
-                    indexManager.removeIndex(AuthContextUtils.getDomain(), AnyTypeKind.ANY_OBJECT);
-                }
-                indexManager.createIndex(AuthContextUtils.getDomain(), AnyTypeKind.ANY_OBJECT);
+                createIndex(AnyTypeKind.USER.name());
+                createIndex(AnyTypeKind.GROUP.name());
+                createIndex(AnyTypeKind.ANY_OBJECT.name());
 
                 LOG.debug("Indexing users...");
                 for (int page = 1; page <= (userDAO.count() / AnyDAO.DEFAULT_PAGE_SIZE) + 1; page++) {
                     for (String user : userDAO.findAllKeys(page, AnyDAO.DEFAULT_PAGE_SIZE)) {
                         IndexRequest request = new IndexRequest(
-                                ElasticsearchUtils.getContextDomainName(
-                                        AuthContextUtils.getDomain(), AnyTypeKind.USER)).
-                                id(user).
+                                elasticsearchUtils.getContextDomainName(AnyTypeKind.USER.name()),
+                                AnyTypeKind.USER.name(),
+                                user).
                                 source(elasticsearchUtils.builder(userDAO.find(user)));
                         IndexResponse response = client.index(request, RequestOptions.DEFAULT);
                         LOG.debug("Index successfully created for {}: {}", user, response);
@@ -95,9 +95,9 @@ public class ElasticsearchReindex extends AbstractSchedTaskJobDelegate {
                 for (int page = 1; page <= (groupDAO.count() / AnyDAO.DEFAULT_PAGE_SIZE) + 1; page++) {
                     for (String group : groupDAO.findAllKeys(page, AnyDAO.DEFAULT_PAGE_SIZE)) {
                         IndexRequest request = new IndexRequest(
-                                ElasticsearchUtils.getContextDomainName(
-                                        AuthContextUtils.getDomain(), AnyTypeKind.GROUP)).
-                                id(group).
+                                elasticsearchUtils.getContextDomainName(AnyTypeKind.GROUP.name()),
+                                AnyTypeKind.GROUP.name(),
+                                group).
                                 source(elasticsearchUtils.builder(groupDAO.find(group)));
                         IndexResponse response = client.index(request, RequestOptions.DEFAULT);
                         LOG.debug("Index successfully created for {}: {}", group, response);
@@ -108,12 +108,28 @@ public class ElasticsearchReindex extends AbstractSchedTaskJobDelegate {
                 for (int page = 1; page <= (anyObjectDAO.count() / AnyDAO.DEFAULT_PAGE_SIZE) + 1; page++) {
                     for (String anyObject : anyObjectDAO.findAllKeys(page, AnyDAO.DEFAULT_PAGE_SIZE)) {
                         IndexRequest request = new IndexRequest(
-                                ElasticsearchUtils.getContextDomainName(
-                                        AuthContextUtils.getDomain(), AnyTypeKind.ANY_OBJECT)).
-                                id(anyObject).
+                                elasticsearchUtils.getContextDomainName(AnyTypeKind.ANY_OBJECT.name()),
+                                AnyTypeKind.ANY_OBJECT.name(),
+                                anyObject).
                                 source(elasticsearchUtils.builder(anyObjectDAO.find(anyObject)));
                         IndexResponse response = client.index(request, RequestOptions.DEFAULT);
                         LOG.debug("Index successfully created for {}: {}", anyObject, response);
+                    }
+                }
+
+                LOG.debug("Indexing Propagation Tasks...");
+                for (int page = 1; page <= (taskDAO.count(PropagationTask.class, null, null, null, null)
+                        / AnyDAO.DEFAULT_PAGE_SIZE) + 1; page++) {
+                    for (PropagationTask propTask : taskDAO.findAll(
+                            PropagationTask.class, null, null, null, null, page, AnyDAO.DEFAULT_PAGE_SIZE,
+                            Collections.<OrderByClause>emptyList())) {
+                        IndexRequest request = new IndexRequest(
+                                elasticsearchUtils.getContextDomainName(Task.class.getSimpleName()),
+                                PropagationTask.class.getSimpleName(),
+                                propTask.getKey()).
+                                source(elasticsearchUtils.builder(propTask));
+                        IndexResponse response = client.index(request, RequestOptions.DEFAULT);
+                        LOG.debug("Index successfully created for {}: {}", propTask, response);
                     }
                 }
 
@@ -124,6 +140,66 @@ public class ElasticsearchReindex extends AbstractSchedTaskJobDelegate {
         }
 
         return "SUCCESS";
+    }
+
+    @SuppressWarnings("deprecation")
+    private void removeIndexIfExists(final String index) throws IOException {
+        if (client.indices().exists(
+                new GetIndexRequest().indices(elasticsearchUtils.getContextDomainName(index)),
+                RequestOptions.DEFAULT)) {
+
+            AcknowledgedResponse acknowledgedResponse = client.indices().delete(
+                    new DeleteIndexRequest(elasticsearchUtils.getContextDomainName(index)), RequestOptions.DEFAULT);
+            LOG.debug("Successfully removed {}: {}",
+                    elasticsearchUtils.getContextDomainName(index), acknowledgedResponse);
+        }
+    }
+
+    @SuppressWarnings("deprecation")
+    private void createIndex(final String index)
+            throws InterruptedException, ExecutionException, IOException {
+
+        XContentBuilder settings = XContentFactory.jsonBuilder().
+                startObject().
+                startObject("analysis").
+                startObject("analyzer").
+                startObject("string_lowercase").
+                field("type", "custom").
+                field("tokenizer", "standard").
+                field("filter").
+                startArray().
+                value("lowercase").
+                endArray().
+                endObject().
+                endObject().
+                endObject().
+                startObject("index").
+                field("number_of_shards", elasticsearchUtils.getNumberOfShards()).
+                field("number_of_replicas", elasticsearchUtils.getNumberOfReplicas()).
+                endObject().
+                endObject();
+
+        XContentBuilder mapping = XContentFactory.jsonBuilder().
+                startObject().
+                startArray("dynamic_templates").
+                startObject().
+                startObject("strings").
+                field("match_mapping_type", "string").
+                startObject("mapping").
+                field("type", "keyword").
+                field("analyzer", "string_lowercase").
+                endObject().
+                endObject().
+                endObject().
+                endArray().
+                endObject();
+
+        CreateIndexResponse response = client.indices().create(
+                new CreateIndexRequest(elasticsearchUtils.getContextDomainName(index)).
+                        settings(settings).
+                        mapping(index, mapping), RequestOptions.DEFAULT);
+        LOG.debug("Successfully created {} for {}: {}",
+                elasticsearchUtils.getContextDomainName(index), index, response);
     }
 
     @Override

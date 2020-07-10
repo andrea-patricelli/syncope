@@ -36,7 +36,6 @@ import org.apache.commons.lang3.tuple.Pair;
 import org.apache.syncope.common.keymaster.client.api.ConfParamOps;
 import org.apache.syncope.common.lib.SyncopeConstants;
 import org.apache.syncope.common.lib.types.IdRepoImplementationType;
-import org.apache.syncope.common.lib.types.TaskType;
 import org.apache.syncope.core.persistence.api.DomainHolder;
 import org.apache.syncope.core.persistence.api.dao.NotFoundException;
 import org.apache.syncope.core.persistence.api.dao.ReportDAO;
@@ -339,9 +338,9 @@ public class JobManagerImpl implements JobManager, SyncopeCoreLoader {
 
         AuthContextUtils.callAsAdmin(domain, () -> {
             // 1. jobs for SchedTasks
-            Set<SchedTask> tasks = new HashSet<>(taskDAO.<SchedTask>findAll(TaskType.SCHEDULED));
-            tasks.addAll(taskDAO.<PullTask>findAll(TaskType.PULL));
-            tasks.addAll(taskDAO.<PushTask>findAll(TaskType.PUSH));
+            Set<SchedTask> tasks = new HashSet<>(taskDAO.<SchedTask>findAll(SchedTask.class));
+            tasks.addAll(taskDAO.<PullTask>findAll(PullTask.class));
+            tasks.addAll(taskDAO.<PushTask>findAll(PushTask.class));
 
             boolean loadException = false;
             for (Iterator<SchedTask> it = tasks.iterator(); it.hasNext() && !loadException;) {
@@ -420,9 +419,9 @@ public class JobManagerImpl implements JobManager, SyncopeCoreLoader {
     public void unload(final String domain) {
         AuthContextUtils.callAsAdmin(domain, () -> {
             // 1. jobs for SchedTasks
-            Set<SchedTask> tasks = new HashSet<>(taskDAO.<SchedTask>findAll(TaskType.SCHEDULED));
-            tasks.addAll(taskDAO.<PullTask>findAll(TaskType.PULL));
-            tasks.addAll(taskDAO.<PushTask>findAll(TaskType.PUSH));
+            Set<SchedTask> tasks = new HashSet<>(taskDAO.<SchedTask>findAll(SchedTask.class));
+            tasks.addAll(taskDAO.<PullTask>findAll(PullTask.class));
+            tasks.addAll(taskDAO.<PushTask>findAll(PushTask.class));
 
             tasks.forEach(task -> {
                 try {

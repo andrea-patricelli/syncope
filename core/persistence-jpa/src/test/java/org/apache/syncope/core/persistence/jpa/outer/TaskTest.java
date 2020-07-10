@@ -38,7 +38,6 @@ import org.apache.syncope.common.lib.types.ExecStatus;
 import org.apache.syncope.common.lib.types.IdMImplementationType;
 import org.apache.syncope.common.lib.types.ResourceOperation;
 import org.apache.syncope.common.lib.types.PullMode;
-import org.apache.syncope.common.lib.types.TaskType;
 import org.apache.syncope.common.lib.types.UnmatchingRule;
 import org.apache.syncope.core.persistence.api.attrvalue.validation.InvalidEntityException;
 import org.apache.syncope.core.persistence.api.dao.ExternalResourceDAO;
@@ -103,7 +102,7 @@ public class TaskTest extends AbstractTest {
         orderByClauses.add(clause1);
         orderByClauses.add(clause2);
         orderByClauses.add(clause3);
-        assertFalse(taskDAO.findAll(TaskType.PROPAGATION, null, null, null, null, -1, -1, orderByClauses).isEmpty());
+        assertFalse(taskDAO.findAll(PropagationTask.class, null, null, null, null, -1, -1, orderByClauses).isEmpty());
     }
 
     @Test
@@ -135,8 +134,7 @@ public class TaskTest extends AbstractTest {
         entityManager().flush();
 
         resource = resourceDAO.find("ws-target-resource-1");
-        assertTrue(taskDAO.findAll(
-                TaskType.PROPAGATION, resource, null, null, null, -1, -1, List.of()).
+        assertTrue(taskDAO.findAll(PropagationTask.class, resource, null, null, null, -1, -1, List.of()).
                 contains(task));
     }
 

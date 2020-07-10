@@ -24,7 +24,6 @@ import java.util.concurrent.atomic.AtomicReference;
 import javax.mail.internet.MimeMessage;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.syncope.common.lib.types.AuditElements;
-import org.apache.syncope.common.lib.types.TaskType;
 import org.apache.syncope.common.lib.types.TraceLevel;
 import org.apache.syncope.core.provisioning.api.utils.ExceptionUtils2;
 import org.apache.syncope.core.persistence.api.dao.TaskDAO;
@@ -211,7 +210,7 @@ public class DefaultNotificationJobDelegate implements NotificationJobDelegate {
     @Transactional
     @Override
     public void execute(final String executor) throws JobExecutionException {
-        List<NotificationTask> tasks = taskDAO.<NotificationTask>findToExec(TaskType.NOTIFICATION);
+        List<NotificationTask> tasks = taskDAO.<NotificationTask>findToExec(NotificationTask.class);
 
         status.set("Sending out " + tasks.size() + " notifications");
 

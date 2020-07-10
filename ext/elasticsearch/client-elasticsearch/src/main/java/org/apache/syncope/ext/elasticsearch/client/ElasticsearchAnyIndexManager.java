@@ -19,107 +19,34 @@
 package org.apache.syncope.ext.elasticsearch.client;
 
 import java.io.IOException;
-import java.util.concurrent.ExecutionException;
-import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.core.persistence.api.entity.Any;
 import org.apache.syncope.core.provisioning.api.event.AnyCreatedUpdatedEvent;
 import org.apache.syncope.core.provisioning.api.event.AnyDeletedEvent;
 import org.apache.syncope.core.spring.security.AuthContextUtils;
-import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetRequest;
 import org.elasticsearch.action.get.GetResponse;
 import org.elasticsearch.action.index.IndexRequest;
 import org.elasticsearch.action.index.IndexResponse;
-import org.elasticsearch.action.support.master.AcknowledgedResponse;
 import org.elasticsearch.action.update.UpdateRequest;
 import org.elasticsearch.action.update.UpdateResponse;
 import org.elasticsearch.client.RequestOptions;
-import org.elasticsearch.client.RestHighLevelClient;
-import org.elasticsearch.client.indices.CreateIndexRequest;
-import org.elasticsearch.client.indices.CreateIndexResponse;
-import org.elasticsearch.client.indices.GetIndexRequest;
-import org.elasticsearch.common.xcontent.XContentBuilder;
-import org.elasticsearch.common.xcontent.XContentFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.event.TransactionalEventListener;
 
 /**
  * Listen to any create / update and delete in order to keep the Elasticsearch indexes consistent.
  */
-public class ElasticsearchIndexManager {
+public class ElasticsearchAnyIndexManager 
+        extends AbstractIndexManager<AnyCreatedUpdatedEvent<Any<?>>, AnyDeletedEvent> {
 
-    private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchIndexManager.class);
-
-    @Autowired
-    private RestHighLevelClient client;
-
-    @Autowired
-    private ElasticsearchUtils elasticsearchUtils;
-
-    public boolean existsIndex(final String domain, final AnyTypeKind kind) throws IOException {
-        return client.indices().exists(
-                new GetIndexRequest(ElasticsearchUtils.getContextDomainName(domain, kind)), RequestOptions.DEFAULT);
-    }
-
-    public void createIndex(final String domain, final AnyTypeKind kind)
-            throws InterruptedException, ExecutionException, IOException {
-
-        XContentBuilder settings = XContentFactory.jsonBuilder().
-                startObject().
-                startObject("analysis").
-                startObject("normalizer").
-                startObject("string_lowercase").
-                field("type", "custom").
-                field("char_filter", new Object[0]).
-                field("filter").
-                startArray().
-                value("lowercase").
-                endArray().
-                endObject().
-                endObject().
-                endObject().
-                startObject("index").
-                field("number_of_shards", elasticsearchUtils.getNumberOfShards()).
-                field("number_of_replicas", elasticsearchUtils.getNumberOfReplicas()).
-                endObject().
-                endObject();
-
-        XContentBuilder mapping = XContentFactory.jsonBuilder().
-                startObject().
-                startArray("dynamic_templates").
-                startObject().
-                startObject("strings").
-                field("match_mapping_type", "string").
-                startObject("mapping").
-                field("type", "keyword").
-                field("normalizer", "string_lowercase").
-                endObject().
-                endObject().
-                endObject().
-                endArray().
-                endObject();
-
-        CreateIndexResponse response = client.indices().create(
-                new CreateIndexRequest(ElasticsearchUtils.getContextDomainName(domain, kind)).
-                        settings(settings).
-                        mapping(mapping), RequestOptions.DEFAULT);
-        LOG.debug("Successfully created {} for {}: {}",
-                ElasticsearchUtils.getContextDomainName(domain, kind), kind.name(), response);
-    }
-
-    public void removeIndex(final String domain, final AnyTypeKind kind) throws IOException {
-        AcknowledgedResponse acknowledgedResponse = client.indices().delete(
-                new DeleteIndexRequest(ElasticsearchUtils.getContextDomainName(domain, kind)), RequestOptions.DEFAULT);
-        LOG.debug("Successfully removed {}: {}",
-                ElasticsearchUtils.getContextDomainName(domain, kind), acknowledgedResponse);
-    }
+    private static final Logger LOG = LoggerFactory.getLogger(ElasticsearchAnyIndexManager.class);
 
     @TransactionalEventListener
-    public void after(final AnyCreatedUpdatedEvent<Any<?>> event) throws IOException {
+    @Override
+    public void afterCreate(final AnyCreatedUpdatedEvent<Any<?>> event) throws IOException {
         GetRequest getRequest = new GetRequest(
                 ElasticsearchUtils.getContextDomainName(
                         AuthContextUtils.getDomain(), event.getAny().getType().getKind()),
@@ -150,7 +77,8 @@ public class ElasticsearchIndexManager {
     }
 
     @TransactionalEventListener
-    public void after(final AnyDeletedEvent event) throws IOException {
+    @Override
+    public void afterDelete(final AnyDeletedEvent event) throws IOException {
         LOG.debug("About to delete index for {}[{}]", event.getAnyTypeKind(), event.getAnyKey());
 
         DeleteRequest request = new DeleteRequest(
@@ -160,4 +88,5 @@ public class ElasticsearchIndexManager {
         LOG.debug("Index successfully deleted for {}[{}]: {}",
                 event.getAnyTypeKind(), event.getAnyKey(), response);
     }
+
 }

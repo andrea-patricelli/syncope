@@ -28,7 +28,6 @@ import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.apache.syncope.common.lib.types.MappingPurpose;
-import org.apache.syncope.common.lib.types.TaskType;
 import org.apache.syncope.core.persistence.api.dao.AnyTypeDAO;
 import org.apache.syncope.core.persistence.api.dao.ConnInstanceDAO;
 import org.apache.syncope.core.persistence.api.dao.ExternalResourceDAO;
@@ -215,7 +214,7 @@ public class ResourceTest extends AbstractTest {
 
         // Get tasks
         List<PropagationTask> propagationTasks = taskDAO.findAll(
-                TaskType.PROPAGATION, resource, null, null, null, -1, -1, List.of());
+                PropagationTask.class, resource, null, null, null, -1, -1, List.of());
         assertFalse(propagationTasks.isEmpty());
 
         // delete resource
@@ -235,7 +234,7 @@ public class ResourceTest extends AbstractTest {
                     assertNotNull(actualUser);
                     return actualUser;
                 }).forEachOrdered((actualUser) -> userDAO.findAllResources(actualUser).
-                        forEach(res -> assertFalse(res.getKey().equalsIgnoreCase(resource.getKey()))));
+                forEach(res -> assertFalse(res.getKey().equalsIgnoreCase(resource.getKey()))));
 
         // resource must be not referenced any more from the connector
         ConnInstance actualConnector = connInstanceDAO.find(connector.getKey());

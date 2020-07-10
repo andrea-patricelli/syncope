@@ -37,8 +37,14 @@ public class ElasticsearchClientContext {
 
     @ConditionalOnMissingBean
     @Bean
-    public ElasticsearchIndexManager elasticsearchIndexManager() {
-        return new ElasticsearchIndexManager();
+    public ElasticsearchAnyIndexManager elasticsearchAnyIndexManager() {
+        return new ElasticsearchAnyIndexManager();
+    }
+
+    @ConditionalOnMissingBean
+    @Bean
+    public ElasticsearchTaskIndexManager elasticsearchTaskIndexManager() {
+        return new ElasticsearchTaskIndexManager();
     }
 
     @ConditionalOnMissingBean

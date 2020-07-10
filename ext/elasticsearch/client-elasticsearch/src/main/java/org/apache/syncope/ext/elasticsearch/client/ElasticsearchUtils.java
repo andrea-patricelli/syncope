@@ -34,9 +34,12 @@ import org.apache.syncope.core.persistence.api.entity.PlainAttr;
 import org.apache.syncope.core.persistence.api.entity.PlainAttrValue;
 import org.apache.syncope.core.persistence.api.entity.anyobject.AnyObject;
 import org.apache.syncope.core.persistence.api.entity.group.Group;
+import org.apache.syncope.core.persistence.api.entity.task.PropagationTask;
+import org.apache.syncope.core.persistence.api.entity.task.Task;
 import org.apache.syncope.core.persistence.api.entity.user.User;
 import org.elasticsearch.common.xcontent.XContentBuilder;
 import org.elasticsearch.common.xcontent.XContentFactory;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -44,6 +47,8 @@ import org.springframework.transaction.annotation.Transactional;
  * Utility methods for usage with Elasticsearch.
  */
 public class ElasticsearchUtils {
+
+    private static final org.slf4j.Logger LOG = LoggerFactory.getLogger(ElasticsearchUtils.class);
 
     @Autowired
     private UserDAO userDAO;
@@ -212,4 +217,49 @@ public class ElasticsearchUtils {
     public static String getContextDomainName(final String domain, final AnyTypeKind kind) {
         return domain.toLowerCase() + '_' + kind.name().toLowerCase();
     }
+
+    /**
+     * Returns the builder specialized with content from the provided task.
+     *
+     * @param task
+     * @return builder specialized with content from the provided task
+     * @throws IOException in case of errors
+     */
+    public XContentBuilder builder(final Task task) throws IOException {
+        XContentBuilder builder = XContentFactory.jsonBuilder().
+                startObject().
+                field("id", task.getKey());
+
+        builder.startArray("executions");
+        task.getExecs().forEach(exec -> {
+            try {
+                builder.startObject();
+                builder.field("key", exec.getKey());
+                builder.field("class", exec.getClass().getSimpleName());
+                builder.field("message", exec.getMessage());
+                builder.field("start", exec.getStart());
+                builder.field("end", exec.getEnd());
+                builder.field("status", exec.getStatus());
+                builder.endObject();
+            } catch (IOException e) {
+                LOG.error("Unable to add task execution {} to index builder", exec, e);
+            }
+        });
+        builder.endArray();
+
+        if (task instanceof PropagationTask) {
+            PropagationTask propagationTask = (PropagationTask) task;
+            builder.field("connObjectKey", propagationTask.getConnObjectKey())
+                    .field("anyType", propagationTask.getAnyType())
+                    .field("anyTypeKind", propagationTask.getAnyTypeKind().name())
+                    .field("entityKey", propagationTask.getEntityKey())
+                    .field("objectClassName", propagationTask.getObjectClassName())
+                    .field("oldConnObjectKey", propagationTask.getOldConnObjectKey())
+                    .field("operation", propagationTask.getOperation().name())
+                    .field("resource", propagationTask.getResource().getKey())
+                    .field("attributes", propagationTask.getSerializedAttributes());
+        }
+        return builder.endObject();
+    }
+
 }
