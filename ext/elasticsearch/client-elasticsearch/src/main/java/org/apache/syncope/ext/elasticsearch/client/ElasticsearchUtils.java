@@ -24,7 +24,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.stream.Collectors;
-import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.core.persistence.api.dao.AnyObjectDAO;
 import org.apache.syncope.core.persistence.api.dao.GroupDAO;
 import org.apache.syncope.core.persistence.api.dao.UserDAO;
@@ -214,8 +213,8 @@ public class ElasticsearchUtils {
         return builder.endObject();
     }
 
-    public static String getContextDomainName(final String domain, final AnyTypeKind kind) {
-        return domain.toLowerCase() + '_' + kind.name().toLowerCase();
+    public static String getContextDomainName(final String domain, final String index) {
+        return domain.toLowerCase() + '_' + index.toLowerCase();
     }
 
     /**

@@ -19,11 +19,25 @@
 package org.apache.syncope.ext.elasticsearch.client;
 
 import java.io.IOException;
+import java.util.concurrent.ExecutionException;
+import org.elasticsearch.action.admin.indices.delete.DeleteIndexRequest;
+import org.elasticsearch.client.RequestOptions;
 import org.elasticsearch.client.RestHighLevelClient;
+import org.elasticsearch.action.support.master.AcknowledgedResponse;
+import org.elasticsearch.client.indices.CreateIndexRequest;
+import org.elasticsearch.client.indices.CreateIndexResponse;
+import org.elasticsearch.client.indices.GetIndexRequest;
+import org.elasticsearch.common.xcontent.XContentBuilder;
+import org.elasticsearch.common.xcontent.XContentFactory;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.ApplicationEvent;
 
-public abstract class AbstractIndexManager<CE extends ApplicationEvent, DE extends ApplicationEvent> {
+public abstract class AbstractIndexManager<CE extends ApplicationEvent, DE extends ApplicationEvent>
+        implements IndexManager<CE, DE> {
+
+    protected static final Logger LOG = LoggerFactory.getLogger(AbstractIndexManager.class);
 
     @Autowired
     protected RestHighLevelClient client;
@@ -31,8 +45,65 @@ public abstract class AbstractIndexManager<CE extends ApplicationEvent, DE exten
     @Autowired
     protected ElasticsearchUtils elasticsearchUtils;
 
-    public abstract void afterCreate(CE event) throws IOException;
+    @Override
+    public boolean existsIndex(final String domain, final String index) throws IOException {
+        return client.indices().exists(
+                new GetIndexRequest(ElasticsearchUtils.getContextDomainName(domain, index)), RequestOptions.DEFAULT);
+    }
 
-    public abstract void afterDelete(DE event) throws IOException;
+    @Override
+    public void createIndex(final String domain, final String index)
+            throws InterruptedException, ExecutionException, IOException {
+
+        XContentBuilder settings = XContentFactory.jsonBuilder().
+                startObject().
+                startObject("analysis").
+                startObject("normalizer").
+                startObject("string_lowercase").
+                field("type", "custom").
+                field("char_filter", new Object[0]).
+                field("filter").
+                startArray().
+                value("lowercase").
+                endArray().
+                endObject().
+                endObject().
+                endObject().
+                startObject("index").
+                field("number_of_shards", elasticsearchUtils.getNumberOfShards()).
+                field("number_of_replicas", elasticsearchUtils.getNumberOfReplicas()).
+                endObject().
+                endObject();
+
+        XContentBuilder mapping = XContentFactory.jsonBuilder().
+                startObject().
+                startArray("dynamic_templates").
+                startObject().
+                startObject("strings").
+                field("match_mapping_type", "string").
+                startObject("mapping").
+                field("type", "keyword").
+                field("normalizer", "string_lowercase").
+                endObject().
+                endObject().
+                endObject().
+                endArray().
+                endObject();
+
+        CreateIndexResponse response = client.indices().create(
+                new CreateIndexRequest(ElasticsearchUtils.getContextDomainName(domain, index)).
+                        settings(settings).
+                        mapping(mapping), RequestOptions.DEFAULT);
+        LOG.debug("Successfully created {} for {}: {}",
+                ElasticsearchUtils.getContextDomainName(domain, index), index, response);
+    }
+
+    @Override
+    public void removeIndex(final String domain, final String index) throws IOException {
+        AcknowledgedResponse acknowledgedResponse = client.indices().delete(
+                new DeleteIndexRequest(ElasticsearchUtils.getContextDomainName(domain, index)), RequestOptions.DEFAULT);
+        LOG.debug("Successfully removed {}: {}",
+                ElasticsearchUtils.getContextDomainName(domain, index), acknowledgedResponse);
+    }
 
 }

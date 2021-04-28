@@ -21,7 +21,7 @@ package org.apache.syncope.core.persistence.jpa;
 import javax.sql.DataSource;
 import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.core.persistence.api.SyncopeCoreLoader;
-import org.apache.syncope.ext.elasticsearch.client.ElasticsearchIndexManager;
+import org.apache.syncope.ext.elasticsearch.client.IndexManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -33,8 +33,9 @@ public class DomainIndexLoader implements SyncopeCoreLoader {
 
     private static final Logger LOG = LoggerFactory.getLogger(DomainIndexLoader.class);
 
+    @SuppressWarnings("rawtypes")
     @Autowired
-    private ElasticsearchIndexManager indexManager;
+    private IndexManager indexManager;
 
     @Override
     public int getOrder() {
@@ -44,14 +45,14 @@ public class DomainIndexLoader implements SyncopeCoreLoader {
     @Override
     public void load(final String domain, final DataSource datasource) {
         try {
-            if (!indexManager.existsIndex(domain, AnyTypeKind.USER)) {
-                indexManager.createIndex(domain, AnyTypeKind.USER);
+            if (!indexManager.existsIndex(domain, AnyTypeKind.USER.name())) {
+                indexManager.createIndex(domain, AnyTypeKind.USER.name());
             }
-            if (!indexManager.existsIndex(domain, AnyTypeKind.GROUP)) {
-                indexManager.createIndex(domain, AnyTypeKind.GROUP);
+            if (!indexManager.existsIndex(domain, AnyTypeKind.GROUP.name())) {
+                indexManager.createIndex(domain, AnyTypeKind.GROUP.name());
             }
-            if (!indexManager.existsIndex(domain, AnyTypeKind.ANY_OBJECT)) {
-                indexManager.createIndex(domain, AnyTypeKind.ANY_OBJECT);
+            if (!indexManager.existsIndex(domain, AnyTypeKind.ANY_OBJECT.name())) {
+                indexManager.createIndex(domain, AnyTypeKind.ANY_OBJECT.name());
             }
         } catch (Exception e) {
             LOG.error("While creating index for domain {}", domain, e);

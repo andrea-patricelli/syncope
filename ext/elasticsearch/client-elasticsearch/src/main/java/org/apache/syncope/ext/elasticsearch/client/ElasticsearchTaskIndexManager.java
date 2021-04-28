@@ -22,6 +22,7 @@ import java.io.IOException;
 import org.apache.syncope.core.persistence.api.entity.task.Task;
 import org.apache.syncope.core.provisioning.api.event.TaskCreatedUpdatedEvent;
 import org.apache.syncope.core.provisioning.api.event.TaskDeletedEvent;
+import org.apache.syncope.core.spring.security.AuthContextUtils;
 import org.elasticsearch.action.delete.DeleteRequest;
 import org.elasticsearch.action.delete.DeleteResponse;
 import org.elasticsearch.action.get.GetRequest;
@@ -47,16 +48,17 @@ public class ElasticsearchTaskIndexManager
     @TransactionalEventListener
     public void afterCreate(final TaskCreatedUpdatedEvent<? extends Task> event) throws IOException {
         GetRequest getRequest = new GetRequest(
-                Task.class.getSimpleName(),
-                event.getTask().getClass().getSimpleName(),
+                ElasticsearchUtils.getContextDomainName(
+                        AuthContextUtils.getDomain(),  Task.class.getSimpleName()),
                 event.getTask().getKey());
+
         GetResponse getResponse = client.get(getRequest, RequestOptions.DEFAULT);
         if (getResponse.isExists()) {
             LOG.debug("About to update index for {}", event.getTask());
 
             UpdateRequest request = new UpdateRequest(
-                    Task.class.getSimpleName(),
-                    event.getTask().getClass().getSimpleName(),
+                    ElasticsearchUtils.getContextDomainName(
+                            AuthContextUtils.getDomain(), event.getTask().getClass().getSimpleName()),
                     event.getTask().getKey()).
                     retryOnConflict(elasticsearchUtils.getRetryOnConflict()).
                     doc(elasticsearchUtils.builder(event.getTask()));
@@ -65,10 +67,10 @@ public class ElasticsearchTaskIndexManager
         } else {
             LOG.debug("About to create index for {}", event.getTask());
 
-            IndexRequest request = new IndexRequest(
-                    Task.class.getSimpleName(),
-                    event.getTask().getClass().getSimpleName(),
-                    event.getTask().getKey()).
+             IndexRequest request = new IndexRequest(
+                    ElasticsearchUtils.getContextDomainName(
+                            AuthContextUtils.getDomain(),  Task.class.getSimpleName())).
+                    id(event.getTask().getKey()).
                     source(elasticsearchUtils.builder(event.getTask()));
             IndexResponse response = client.index(request, RequestOptions.DEFAULT);
             LOG.debug("Index successfully created for {}: {}", event.getTask(), response);
@@ -81,8 +83,7 @@ public class ElasticsearchTaskIndexManager
         LOG.debug("About to delete index for {}[{}]", event.getTaskType(), event.getTaskKey());
 
         DeleteRequest request = new DeleteRequest(
-                Task.class.getSimpleName(),
-                event.getTaskType(),
+                ElasticsearchUtils.getContextDomainName(AuthContextUtils.getDomain(), Task.class.getSimpleName()),
                 event.getTaskKey());
         DeleteResponse response = client.delete(request, RequestOptions.DEFAULT);
         LOG.debug("Index successfully deleted for {}[{}]: {}", event.getTaskType(), event.getTaskKey(), response);
