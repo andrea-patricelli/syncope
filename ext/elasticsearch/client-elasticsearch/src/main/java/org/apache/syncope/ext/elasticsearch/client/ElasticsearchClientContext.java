@@ -21,6 +21,12 @@ package org.apache.syncope.ext.elasticsearch.client;
 import java.util.List;
 
 import org.apache.http.HttpHost;
+import org.apache.syncope.core.persistence.api.entity.Any;
+import org.apache.syncope.core.persistence.api.entity.task.Task;
+import org.apache.syncope.core.provisioning.api.event.AnyCreatedUpdatedEvent;
+import org.apache.syncope.core.provisioning.api.event.AnyDeletedEvent;
+import org.apache.syncope.core.provisioning.api.event.TaskCreatedUpdatedEvent;
+import org.apache.syncope.core.provisioning.api.event.TaskDeletedEvent;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -36,14 +42,14 @@ public class ElasticsearchClientContext {
     }
 
     @ConditionalOnMissingBean
-    @Bean
-    public ElasticsearchAnyIndexManager elasticsearchAnyIndexManager() {
+    @Bean(name = "anyIndexManager")
+    public IndexManager<AnyCreatedUpdatedEvent<Any<?>>, AnyDeletedEvent> anyIndexManager() {
         return new ElasticsearchAnyIndexManager();
     }
 
     @ConditionalOnMissingBean
-    @Bean
-    public ElasticsearchTaskIndexManager elasticsearchTaskIndexManager() {
+    @Bean(name = "taskIndexManager")
+    public IndexManager<TaskCreatedUpdatedEvent<? extends Task>, TaskDeletedEvent> taskIndexManager() {
         return new ElasticsearchTaskIndexManager();
     }
 

@@ -21,10 +21,13 @@ package org.apache.syncope.core.persistence.jpa;
 import javax.sql.DataSource;
 import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.core.persistence.api.SyncopeCoreLoader;
+import org.apache.syncope.core.persistence.api.entity.task.Task;
+import org.apache.syncope.core.spring.security.AuthContextUtils;
 import org.apache.syncope.ext.elasticsearch.client.IndexManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.core.Ordered;
 import org.springframework.stereotype.Component;
 
@@ -33,9 +36,13 @@ public class DomainIndexLoader implements SyncopeCoreLoader {
 
     private static final Logger LOG = LoggerFactory.getLogger(DomainIndexLoader.class);
 
-    @SuppressWarnings("rawtypes")
     @Autowired
-    private IndexManager indexManager;
+    @Qualifier("anyIndexManager")
+    private IndexManager anyIndexManager;
+
+    @Autowired
+    @Qualifier("taskIndexManager")
+    private IndexManager taskIndexManager;
 
     @Override
     public int getOrder() {
@@ -45,15 +52,19 @@ public class DomainIndexLoader implements SyncopeCoreLoader {
     @Override
     public void load(final String domain, final DataSource datasource) {
         try {
-            if (!indexManager.existsIndex(domain, AnyTypeKind.USER.name())) {
-                indexManager.createIndex(domain, AnyTypeKind.USER.name());
+            if (!anyIndexManager.existsIndex(domain, AnyTypeKind.USER.name())) {
+                anyIndexManager.createIndex(domain, AnyTypeKind.USER.name());
             }
-            if (!indexManager.existsIndex(domain, AnyTypeKind.GROUP.name())) {
-                indexManager.createIndex(domain, AnyTypeKind.GROUP.name());
+            if (!anyIndexManager.existsIndex(domain, AnyTypeKind.GROUP.name())) {
+                anyIndexManager.createIndex(domain, AnyTypeKind.GROUP.name());
             }
-            if (!indexManager.existsIndex(domain, AnyTypeKind.ANY_OBJECT.name())) {
-                indexManager.createIndex(domain, AnyTypeKind.ANY_OBJECT.name());
+            if (!anyIndexManager.existsIndex(domain, AnyTypeKind.ANY_OBJECT.name())) {
+                anyIndexManager.createIndex(domain, AnyTypeKind.ANY_OBJECT.name());
             }
+            if (taskIndexManager.existsIndex(AuthContextUtils.getDomain(), Task.class.getSimpleName())) {
+                taskIndexManager.removeIndex(AuthContextUtils.getDomain(), Task.class.getSimpleName());
+            }
+            taskIndexManager.createIndex(AuthContextUtils.getDomain(), Task.class.getSimpleName());
         } catch (Exception e) {
             LOG.error("While creating index for domain {}", domain, e);
         }

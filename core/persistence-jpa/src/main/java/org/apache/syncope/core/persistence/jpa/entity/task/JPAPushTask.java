@@ -22,7 +22,6 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Optional;
 import javax.persistence.CascadeType;
-import javax.persistence.DiscriminatorValue;
 import javax.persistence.Entity;
 import javax.persistence.FetchType;
 import javax.persistence.JoinColumn;
@@ -30,8 +29,9 @@ import javax.persistence.JoinTable;
 import javax.persistence.ManyToMany;
 import javax.persistence.ManyToOne;
 import javax.persistence.OneToMany;
-import org.apache.syncope.common.lib.types.IdMImplementationType;
+import javax.persistence.Table;
 import javax.persistence.UniqueConstraint;
+import org.apache.syncope.common.lib.types.IdMImplementationType;
 import org.apache.syncope.core.persistence.api.entity.AnyType;
 import org.apache.syncope.core.persistence.api.entity.Implementation;
 import org.apache.syncope.core.persistence.api.entity.Realm;
@@ -41,10 +41,12 @@ import org.apache.syncope.core.persistence.jpa.entity.JPAImplementation;
 import org.apache.syncope.core.persistence.jpa.entity.JPARealm;
 
 @Entity
-@DiscriminatorValue("PushTask")
+@Table(name = JPAPushTask.TABLE)
 public class JPAPushTask extends AbstractProvisioningTask implements PushTask {
 
     private static final long serialVersionUID = -4141057723006682564L;
+
+    public static final String TABLE = "PushTask";
 
     @ManyToOne(fetch = FetchType.EAGER, optional = false)
     private JPARealm sourceRealm;

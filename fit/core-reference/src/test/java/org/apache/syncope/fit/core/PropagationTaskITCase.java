@@ -24,6 +24,7 @@ import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import com.fasterxml.jackson.databind.node.ArrayNode;
 import java.io.IOException;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -84,6 +85,7 @@ import org.apache.syncope.common.rest.api.beans.ExecQuery;
 import org.apache.syncope.common.rest.api.beans.TaskQuery;
 import org.apache.syncope.common.rest.api.service.TaskService;
 import org.apache.syncope.core.provisioning.api.serialization.POJOHelper;
+import org.apache.syncope.fit.ElasticsearchDetector;
 import org.apache.syncope.fit.core.reference.DateToDateItemTransformer;
 import org.apache.syncope.fit.core.reference.DateToLongItemTransformer;
 import org.identityconnectors.framework.common.objects.Attribute;
@@ -172,6 +174,16 @@ public class PropagationTaskITCase extends AbstractTaskITCase {
         userCR.getResources().add(RESOURCE_NAME_TESTDB);
         UserTO userTO = createUser(userCR).getEntity();
 
+        if (ElasticsearchDetector.isElasticSearchEnabled(syncopeService)) {
+                try {
+                    Thread.sleep(2000);
+                } catch (InterruptedException ex) {
+                    // ignore
+                }
+
+               
+            }
+        
         List<PropagationTaskTO> tasks = new ArrayList<>(
                 taskService.<PropagationTaskTO>search(new TaskQuery.Builder(TaskType.PROPAGATION).
                         anyTypeKind(AnyTypeKind.USER).entityKey(userTO.getKey()).build()).

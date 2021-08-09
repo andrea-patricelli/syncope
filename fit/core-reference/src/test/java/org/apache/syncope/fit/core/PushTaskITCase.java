@@ -147,7 +147,7 @@ public class PushTaskITCase extends AbstractTaskITCase {
         assertEquals(0, jdbcTemplate.queryForList("SELECT ID FROM test2 WHERE ID='puccini'").size());
 
         // ------------------------------------------
-        // Unmatching --> Assign --> dryRuyn
+        // Unmatching --> Assign --> dryRun
         // ------------------------------------------
         execProvisioningTask(
                 taskService, TaskType.PUSH, "af558be4-9d2f-4359-bf85-a554e6e90be1", MAX_WAIT_SECONDS, true);
