@@ -18,16 +18,17 @@
  */
 package org.apache.syncope.client.enduser.panels.captcha;
 
-import java.security.SecureRandom;
 import org.apache.commons.lang3.StringUtils;
 import org.apache.commons.text.RandomStringGenerator;
 import org.apache.syncope.client.ui.commons.markup.html.form.AjaxTextFieldPanel;
 import org.apache.wicket.ajax.AjaxRequestTarget;
 import org.apache.wicket.ajax.markup.html.form.AjaxButton;
 import org.apache.wicket.extensions.markup.html.captcha.CaptchaImageResource;
-import org.apache.wicket.markup.html.image.Image;
+import org.apache.wicket.markup.html.image.NonCachingImage;
 import org.apache.wicket.markup.html.panel.Panel;
 import org.apache.wicket.model.Model;
+
+import java.security.SecureRandom;
 
 public class CaptchaPanel<T> extends Panel {
 
@@ -57,7 +58,7 @@ public class CaptchaPanel<T> extends Panel {
                 return super.render();
             }
         };
-        Image captchaImage = new Image("image", captchaImageResource);
+        NonCachingImage captchaImage = new NonCachingImage("image", captchaImageResource);
         captchaImage.setOutputMarkupId(true);
         add(captchaImage);
 

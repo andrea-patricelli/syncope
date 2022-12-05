@@ -79,7 +79,7 @@ public class SelfConfirmPasswordReset extends BasePage {
         passwordPanel.setOutputMarkupId(true);
 
         form.add(new CardPanel.Builder<PasswordPanel>()
-                .setName("selfConfirmPasswordResetPanel")
+                .setName(getString("self.confirm.password.reset.panel.title"))
                 .setComponent(passwordPanel)
                 .isVisible(true)
                 .build("selfConfirmPasswordResetPanelCard"));

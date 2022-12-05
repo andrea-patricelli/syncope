@@ -79,7 +79,7 @@ public class SelfPasswordReset extends BasePage {
         pwdResetPanel.setOutputMarkupId(true);
 
         form.add(new CardPanel.Builder<SelfPwdResetPanel>()
-                .setName("selfPasswordResetPanel")
+                .setName(getString("self.password.reset.panel.title"))
                 .setComponent(pwdResetPanel)
                 .isVisible(true)
                 .build("selfPasswordResetPanelCard"));
