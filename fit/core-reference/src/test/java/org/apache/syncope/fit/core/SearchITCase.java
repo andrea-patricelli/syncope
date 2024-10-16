@@ -357,7 +357,7 @@ public class SearchITCase extends AbstractITCase {
                         is("lastLoginDate").lexicalNotBefore("2016-03-02T15:21:22%2B0300").
                         and("username").equalTo("bellini").query()).
                 build());
-        assertEquals(users, issueSYNCOPE1321);
+        assertEquals(users.getResult(), issueSYNCOPE1321.getResult());
     }
 
     @Test
@@ -1071,6 +1071,7 @@ public class SearchITCase extends AbstractITCase {
         typeExtensionTO.setAnyType(AnyTypeKind.USER.name());
         typeExtensionTO.getAuxClasses().add("other");
         updateGroup(new GroupUR.Builder(employee.getKey()).typeExtension(typeExtensionTO).build());
+        await().until(() -> !GROUP_SERVICE.read("employee").getTypeExtensions().isEmpty());
         // add a membership and its plain attribute
         updateUser(new UserUR.Builder(puccini.getKey())
                 .plainAttr(attrAddReplacePatch("ctype", "myownctype"))
