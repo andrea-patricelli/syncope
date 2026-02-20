@@ -161,8 +161,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         FlowableRuntimeUtils.updateStatus(engine, procInst.getProcessInstanceId(), user);
         User created = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, created, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, created, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         engine.getRuntimeService().updateBusinessKey(
                 procInst.getProcessInstanceId(), FlowableRuntimeUtils.getWFProcBusinessKey(created.getKey()));
@@ -259,8 +261,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         FlowableRuntimeUtils.updateStatus(engine, procInstID, user);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         variables.keySet().forEach(key -> engine.getRuntimeService().removeVariable(procInstID, key));
         engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.USER);
@@ -298,8 +302,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         FlowableRuntimeUtils.updateStatus(engine, procInstID, user);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.USER);
         engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.WF_EXECUTOR);
@@ -367,8 +373,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         FlowableRuntimeUtils.updateStatus(engine, procInstID, user);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         @SuppressWarnings("unchecked")
         PropagationByResource<String> propByRes = engine.getRuntimeService().getVariable(
@@ -403,8 +411,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         FlowableRuntimeUtils.updateStatus(engine, procInstID, user);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         @SuppressWarnings("unchecked")
         PropagationByResource<String> propByRes = engine.getRuntimeService().getVariable(
@@ -442,8 +452,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         metadata(user, updater, context);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         variables.keySet().forEach(key -> engine.getRuntimeService().removeVariable(procInstID, key));
         engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.USER);
@@ -468,8 +480,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
         metadata(user, updater, context);
         User updated = userDAO.save(user);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        EntityLifecycleEvent<User> event =
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+        event.addAdditionalInfo("context", context);
+        publisher.publishEvent(event);
 
         variables.keySet().forEach(key -> engine.getRuntimeService().removeVariable(procInstID, key));
         engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.USER);
@@ -515,8 +529,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
 
             userDAO.deleteById(user.getKey());
 
-            publisher.publishEvent(
-                    new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, user, AuthContextUtils.getDomain()));
+            EntityLifecycleEvent<User> event =
+                    new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, user, AuthContextUtils.getDomain());
+            event.addAdditionalInfo("context", context);
+            publisher.publishEvent(event);
 
             if (!engine.getHistoryService().createHistoricProcessInstanceQuery().
                     processInstanceId(procInstID).list().isEmpty()) {
@@ -537,8 +553,10 @@ public class FlowableUserWorkflowAdapter extends AbstractUserWorkflowAdapter imp
             metadata(user, eraser, context);
             User updated = userDAO.save(user);
 
-            publisher.publishEvent(
-                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+            EntityLifecycleEvent<User> event =
+                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
+            event.addAdditionalInfo("context", context);
+            publisher.publishEvent(event);
 
             engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.TASK);
             engine.getRuntimeService().removeVariable(procInstID, FlowableRuntimeUtils.USER);

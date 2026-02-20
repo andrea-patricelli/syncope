@@ -496,6 +496,7 @@ under the License.
     <zookeeper.version>3.9.5</zookeeper.version>
 
     <testcontainers.version>2.0.5</testcontainers.version>
+    <javers.version>7.9.0</javers.version>
 
     <zonky.embedded-postgres.version>2.2.2</zonky.embedded-postgres.version>
     <zonky.embedded-postgres-binaries.version>18.6.0</zonky.embedded-postgres-binaries.version>

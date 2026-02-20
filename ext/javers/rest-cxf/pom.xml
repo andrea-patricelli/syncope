@@ -1,0 +1,56 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+    <groupId>org.apache.syncope.ext</groupId>
+    <artifactId>syncope-ext-javers</artifactId>
+    <version>4.0.5-SNAPSHOT</version>
+  </parent>
+
+  <name>Apache Syncope Ext: Javers REST CXF</name>
+  <description>Apache Syncope Ext: Javers REST CXF</description>
+  <groupId>org.apache.syncope.ext.javers</groupId>
+  <artifactId>syncope-ext-javers-rest-cxf</artifactId>
+  <version>4.0.5-SNAPSHOT</version>
+
+  <properties>
+    <rootpom.basedir>${basedir}/../../..</rootpom.basedir>
+  </properties>
+
+  <dependencies>
+    <dependency>
+      <groupId>org.apache.syncope.core.idrepo</groupId>
+      <artifactId>syncope-core-idrepo-rest-cxf</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-rest-api</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-rest-api</artifactId>
+      <version>${project.version}</version>
+      <classifier>javadoc</classifier>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-persistence</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+    
+</project>

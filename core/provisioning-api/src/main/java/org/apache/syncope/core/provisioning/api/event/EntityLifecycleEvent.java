@@ -18,6 +18,8 @@
  */
 package org.apache.syncope.core.provisioning.api.event;
 
+import java.util.HashMap;
+import java.util.Map;
 import org.apache.syncope.core.persistence.api.entity.Entity;
 import org.identityconnectors.framework.common.objects.SyncDeltaType;
 import org.springframework.context.ApplicationEvent;
@@ -31,6 +33,8 @@ public class EntityLifecycleEvent<E extends Entity> extends ApplicationEvent {
     private final E entity;
 
     private final String domain;
+
+    private final Map<String, String> additionalInfos = new HashMap<>();
 
     public EntityLifecycleEvent(final Object source, final SyncDeltaType type, final E entity, final String domain) {
         super(source);
@@ -50,5 +54,14 @@ public class EntityLifecycleEvent<E extends Entity> extends ApplicationEvent {
 
     public String getDomain() {
         return domain;
+    }
+
+    public EntityLifecycleEvent<E> addAdditionalInfo(final String key, final String value) {
+        this.additionalInfos.put(key, value);
+        return this;
+    }
+
+    public Map<String, String> getAdditionalInfos() {
+        return additionalInfos;
     }
 }
