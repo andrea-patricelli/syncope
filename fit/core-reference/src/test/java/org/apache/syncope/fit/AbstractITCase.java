@@ -143,6 +143,7 @@ import org.apache.syncope.common.rest.api.service.DelegationService;
 import org.apache.syncope.common.rest.api.service.DynRealmService;
 import org.apache.syncope.common.rest.api.service.GroupService;
 import org.apache.syncope.common.rest.api.service.ImplementationService;
+import org.apache.syncope.common.rest.api.service.JaversAuditUserService;
 import org.apache.syncope.common.rest.api.service.MailTemplateService;
 import org.apache.syncope.common.rest.api.service.NotificationService;
 import org.apache.syncope.common.rest.api.service.OIDCC4UIProviderService;
@@ -398,6 +399,8 @@ public abstract class AbstractITCase {
     protected static WebAuthnRegistrationService WEBAUTHN_REGISTRATION_SERVICE;
 
     protected static ImpersonationService IMPERSONATION_SERVICE;
+    
+    protected static JaversAuditUserService JAVERS_AUDIT_USER_SERVICE;
 
     private static final String POP3_HOST = "localhost";
 
@@ -483,6 +486,7 @@ public abstract class AbstractITCase {
         MFA_TRUST_STORAGE_SERVICE = ANONYMOUS_CLIENT.getService(MfaTrustStorageService.class);
         WEBAUTHN_REGISTRATION_SERVICE = ANONYMOUS_CLIENT.getService(WebAuthnRegistrationService.class);
         IMPERSONATION_SERVICE = ANONYMOUS_CLIENT.getService(ImpersonationService.class);
+        JAVERS_AUDIT_USER_SERVICE = ANONYMOUS_CLIENT.getService(JaversAuditUserService.class);
 
         String beansJSON = await().atMost(10, TimeUnit.SECONDS).pollInterval(1, TimeUnit.SECONDS).until(() -> {
             try {

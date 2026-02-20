@@ -123,6 +123,15 @@ under the License.
     <asyncLogger name="org.apache.syncope" additivity="false" level="INFO">
       <appender-ref ref="main"/>
     </asyncLogger>
+    <asyncLogger name="org.apache.syncope.core.starter" additivity="false" level="DEBUG">
+      <appender-ref ref="main"/>
+    </asyncLogger>
+    <asyncLogger name="org.apache.syncope.core.persistence.jpa" additivity="false" level="DEBUG">
+      <appender-ref ref="main"/>
+    </asyncLogger>
+    <asyncLogger name="org.apache.syncope.core.persistence.javers" additivity="false" level="DEBUG">
+      <appender-ref ref="main"/>
+    </asyncLogger>
     <asyncLogger name="org.apache.syncope.core.provisioning" additivity="false" level="INFO">
       <appender-ref ref="main"/>
     </asyncLogger>

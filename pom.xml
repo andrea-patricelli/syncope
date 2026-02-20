@@ -492,6 +492,8 @@ under the License.
     <curator.version>5.9.0</curator.version>
     <zookeeper.version>3.9.4</zookeeper.version>
 
+    <javers.version>7.9.0</javers.version>
+    
     <byte-buddy.jdk25.version>1.17.8</byte-buddy.jdk25.version>
     <mockito.jdk25.version>5.20.0</mockito.jdk25.version>
 

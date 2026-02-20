@@ -1,0 +1,90 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 http://maven.apache.org/xsd/maven-4.0.0.xsd">
+  <modelVersion>4.0.0</modelVersion>
+
+  <parent>
+      <groupId>org.apache.syncope.ext</groupId>
+      <artifactId>syncope-ext-javers</artifactId>
+      <version>4.0.5-SNAPSHOT</version>
+  </parent>
+
+  <name>Apache Syncope Ext: Javers Audit Persistence</name>
+  <description>Apache Syncope Ext: Javers Audit Persistence</description>
+  <groupId>org.apache.syncope.ext.javers</groupId>
+  <artifactId>syncope-ext-javers-persistence</artifactId>
+  <packaging>jar</packaging>
+
+  <properties>
+    <rootpom.basedir>${basedir}/../../..</rootpom.basedir>
+  </properties>
+  
+  <dependencies>    
+    <dependency>
+      <groupId>org.apache.syncope.core</groupId>
+      <artifactId>syncope-core-persistence-common</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-client</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-common-lib</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.javers</groupId>
+      <artifactId>javers-spring-jpa</artifactId>
+      <version>${javers.version}</version>
+    </dependency>
+    
+    <dependency>
+      <groupId>org.apache.openjpa</groupId>
+      <artifactId>openjpa</artifactId>
+    </dependency>
+    
+    <!-- TEST -->
+    <dependency>
+      <groupId>org.apache.syncope.core</groupId>
+      <artifactId>syncope-core-persistence-jpa</artifactId>
+      <version>${project.version}</version>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.slf4j</groupId>
+      <artifactId>slf4j-simple</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.junit.jupiter</groupId>
+      <artifactId>junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.mockito</groupId>
+      <artifactId>mockito-junit-jupiter</artifactId>
+      <scope>test</scope>
+    </dependency>
+    <dependency>
+      <groupId>org.assertj</groupId>
+      <artifactId>assertj-core</artifactId>
+      <scope>test</scope>
+    </dependency><dependency><groupId>org.springframework</groupId><artifactId>spring-orm</artifactId></dependency>
+  </dependencies>
+
+  <build>
+    <plugins>
+      <plugin>
+        <groupId>org.apache.maven.plugins</groupId>
+        <artifactId>maven-checkstyle-plugin</artifactId>
+      </plugin>
+    </plugins>
+  </build>
+    
+</project>

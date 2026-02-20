@@ -253,8 +253,12 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
         user = userDAO.save(user);
 
         // finally publish events for all groups affected by this operation, via membership
-        user.getMemberships().forEach(m -> publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(), AuthContextUtils.getDomain())));
+        user.getMemberships().forEach(m -> {
+            EntityLifecycleEvent<Group> event = new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(),
+                    AuthContextUtils.getDomain());
+            event.addAdditionalInfo("context", context);
+            publisher.publishEvent(event);
+        });
 
         return result;
     }
@@ -352,8 +356,12 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
         // finally publish events for all groups affected by this operation, via membership
         result.getResult().getLeft().getMemberships().stream().map(MembershipUR::getGroup).distinct().
                 map(groupDAO::findById).flatMap(Optional::stream).
-                forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(
-                this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain())));
+                forEach(group -> {
+            EntityLifecycleEvent<? extends Group> event =
+                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain());
+            event.addAdditionalInfo("context", context);
+            publisher.publishEvent(event);
+        });
 
         return result;
     }
@@ -444,7 +452,11 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
         doDelete(user, eraser, context);
 
         // finally publish events for all groups affected by this operation, via membership
-        groups.forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(
-                this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain())));
+        groups.forEach(group -> {
+            EntityLifecycleEvent<Group> event =
+                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain());
+            event.addAdditionalInfo("context", context);
+            publisher.publishEvent(event);
+        });
     }
 }

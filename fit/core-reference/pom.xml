@@ -192,6 +192,11 @@ under the License.
       <scope>test</scope>
     </dependency>
     <dependency>
+      <groupId>org.apache.syncope.ext.javers</groupId>
+      <artifactId>syncope-ext-javers-rest-cxf</artifactId>
+      <version>${project.version}</version>
+    </dependency>
+    <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
       <scope>test</scope>
@@ -1621,6 +1626,22 @@ under the License.
       </build>
     </profile>
 
+    <profile>
+      <id>javers-it</id>
+
+      <properties>
+        <spring.profiles.active>embedded,javers</spring.profiles.active>
+      </properties>
+
+      <dependencies>
+        <dependency>
+          <groupId>org.apache.syncope.ext.javers</groupId>
+          <artifactId>syncope-ext-javers-persistence</artifactId>
+          <version>${project.version}</version>
+        </dependency>
+      </dependencies>
+    </profile>
+    
     <profile>
       <id>syncrepl-it</id>
 
