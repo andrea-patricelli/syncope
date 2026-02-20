@@ -7,14 +7,13 @@
   <parent>
     <groupId>org.apache.syncope.ext</groupId>
     <artifactId>syncope-ext-javers</artifactId>
-    <version>4.0.5-SNAPSHOT</version>
+    <version>4.1.0-SNAPSHOT</version>
   </parent>
 
   <name>Apache Syncope Ext: Javers REST CXF</name>
   <description>Apache Syncope Ext: Javers REST CXF</description>
   <groupId>org.apache.syncope.ext.javers</groupId>
   <artifactId>syncope-ext-javers-rest-cxf</artifactId>
-  <version>4.0.5-SNAPSHOT</version>
 
   <properties>
     <rootpom.basedir>${basedir}/../../..</rootpom.basedir>
