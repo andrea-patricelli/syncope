@@ -1,9 +1,11 @@
 package org.apache.syncope.common.lib.to;
 
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.ArrayList;
 import java.util.List;
 import org.apache.syncope.common.lib.BaseBean;
 
+@JsonIgnoreProperties(ignoreUnknown = true)
 public class PropertyChangeTO implements BaseBean {
 
     private String entityKey;
@@ -95,6 +97,10 @@ public class PropertyChangeTO implements BaseBean {
 
     public List<String> getNewValues() {
         return newValues;
+    }
+    
+    public boolean isEmpty(){
+        return oldValues.isEmpty() && newValues.isEmpty();
     }
 
 }

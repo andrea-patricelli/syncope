@@ -36,7 +36,6 @@ import org.apache.syncope.common.lib.to.AnyTO;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.PagedResult;
 import org.apache.syncope.common.lib.to.ShadowTO;
-import org.apache.syncope.common.rest.api.RESTHeaders;
 
 /**
  * REST operations for audit.
@@ -58,7 +57,7 @@ public interface JaversAuditService<TO extends AnyTO> extends JAXRSService {
      */
     @GET
     @Path("shadows/{key}")
-    @Produces({ MediaType.APPLICATION_JSON, RESTHeaders.APPLICATION_YAML, MediaType.APPLICATION_XML })
+    @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
     PagedResult<ShadowTO<TO>> shadows(@NotNull @PathParam("key") String key, 
             @Min(1) @QueryParam(PARAM_PAGE) @DefaultValue("1") int page,
             @Min(1) @QueryParam(PARAM_SIZE) @DefaultValue("25") int size);
@@ -76,7 +75,7 @@ public interface JaversAuditService<TO extends AnyTO> extends JAXRSService {
      */
     @GET
     @Path("changes/")
-    @Produces({ MediaType.APPLICATION_JSON, RESTHeaders.APPLICATION_YAML, MediaType.APPLICATION_XML })
+    @Produces({ MediaType.APPLICATION_JSON, MediaType.APPLICATION_XML })
     List<ChangesByCommitTO> changes(@QueryParam("key") String key,
             @QueryParam("author") String author,
             @QueryParam("from") OffsetDateTime from,

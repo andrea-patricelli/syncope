@@ -105,7 +105,7 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
     public void load(final String domain) {
         if (ctx.containsBean("javers" + StringUtils.capitalize(domain))) {
             LOG.info("Javers for domain {} already initialized, skipping loading", domain);
-        } else {
+        } else if (persistenceProperties.getDomain().stream().anyMatch(dp -> domain.equalsIgnoreCase(dp.getKey()))) {
             buildAndRegisterJavers(domain, persistenceProperties.getDomain()
                     .stream()
                     .filter(dp -> domain.equalsIgnoreCase(dp.getKey()))

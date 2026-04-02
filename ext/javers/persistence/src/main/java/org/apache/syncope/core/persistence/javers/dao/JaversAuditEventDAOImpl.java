@@ -15,6 +15,7 @@ import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.ChangesTO;
 import org.apache.syncope.common.lib.to.MembershipTO;
 import org.apache.syncope.common.lib.to.PropertyChangeTO;
+import org.apache.syncope.common.lib.to.RelationshipTO;
 import org.apache.syncope.common.lib.to.ShadowTO;
 import org.apache.syncope.core.persistence.api.search.SyncopePage;
 import org.apache.syncope.core.spring.security.AuthContextUtils;
@@ -155,7 +156,9 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                                 .map(Object::toString)
                                                 .toList());
                             }
-                            propertyChangeTOs.add(propertyChangeTO);
+                            if (!propertyChangeTO.isEmpty()) {
+                                propertyChangeTOs.add(propertyChangeTO);
+                            }
 
                             // also manage membership attributes
                             // first manage memberships added or updated
@@ -199,6 +202,77 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                         plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
 
                                         propertyChangeTOs.add(plainAttrChangeTO);
+                                    }));
+                            break;
+                        case "relationships":
+                            List<RelationshipTO> oldRels = ((CollectionChange<?>) propertyChange).getLeft()
+                                    .stream()
+                                    .map(RelationshipTO.class::cast)
+                                    .toList();
+                            List<RelationshipTO> newRels = ((CollectionChange<?>) propertyChange).getRight()
+                                    .stream()
+                                    .map(RelationshipTO.class::cast)
+                                    .toList();
+                            propertyChangeTO.getOldValues().addAll(oldRels.stream().map(Object::toString).toList());
+                            if (PropertyChangeType.PROPERTY_ADDED == propertyChange.getChangeType()
+                                    || PropertyChangeType.PROPERTY_VALUE_CHANGED == propertyChange.getChangeType()) {
+                                propertyChangeTO.getNewValues()
+                                        .addAll(((CollectionChange<?>) propertyChange).getRight()
+                                                .stream()
+                                                .map(Object::toString)
+                                                .toList());
+                            }
+                            if (!propertyChangeTO.isEmpty()) {
+                                propertyChangeTOs.add(propertyChangeTO);
+                            }
+
+                            // also manage relationship attributes
+                            // first manage relationships added or updated
+                            for (RelationshipTO newRel : newRels) {
+                                // if present both in old and new relationships, it's an update
+                                oldRels.stream()
+                                        .filter(om -> om.getOtherEndKey().equals(newRel.getOtherEndKey()))
+                                        .findFirst()
+                                        .ifPresentOrElse(oldRel -> javers.compareCollections(oldRel.getPlainAttrs(),
+                                                                newRel.getPlainAttrs(), Attr.class)
+                                                        .getChangesByType(PropertyChange.class)
+                                                        .forEach(pc -> plainAttrsDiff((CollectionChange<?>) pc,
+                                                                propertyChangeTOs,
+                                                                propertyChange.getAffectedGlobalId().value(),
+                                                                "relationships[" + newRel.getOtherEndName() + "].")),
+                                                () -> newRel.getPlainAttrs().forEach(mpa -> {
+                                                    PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();
+                                                    plainAttrChangeTO.setEntityKey(
+                                                            propertyChange.getAffectedGlobalId().value());
+                                                    plainAttrChangeTO.setChangeType(
+                                                            PropertyChangeType.PROPERTY_ADDED.name());
+                                                    plainAttrChangeTO.setField(
+                                                            "relationships[" + newRel.getOtherEndName()
+                                                                    + "].plainAttrs[" + mpa.getSchema() + "]");
+                                                    plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
+
+                                                    if (!plainAttrChangeTO.isEmpty()) {
+                                                        propertyChangeTOs.add(plainAttrChangeTO);
+                                                    }
+                                                }));
+                            }
+                            // then manage relationships removed
+                            oldRels.stream()
+                                    .filter(oldRel -> newRels.stream()
+                                            .noneMatch(newMemb -> newMemb.getOtherEndKey()
+                                                    .equals(oldRel.getOtherEndKey())))
+                                    .forEach(oldRel -> oldRel.getPlainAttrs().forEach(mpa -> {
+                                        PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();
+                                        plainAttrChangeTO.setEntityKey(propertyChange.getAffectedGlobalId().value());
+                                        plainAttrChangeTO.setChangeType(PropertyChangeType.PROPERTY_REMOVED.name());
+                                        plainAttrChangeTO.setField(
+                                                "relationships[" + oldRel.getOtherEndName() + "].plainAttrs["
+                                                        + mpa.getSchema() + "]");
+                                        plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
+
+                                        if(!plainAttrChangeTO.isEmpty()) {
+                                            propertyChangeTOs.add(plainAttrChangeTO);
+                                        }
                                     }));
                             break;
                         case "plainAttrs":
