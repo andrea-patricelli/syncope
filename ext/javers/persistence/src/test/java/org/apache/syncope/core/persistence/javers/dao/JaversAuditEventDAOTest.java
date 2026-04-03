@@ -36,6 +36,7 @@ import java.util.UUID;
 import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.SyncopeConstants;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
+import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.ShadowTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.ext.javers.client.util.JaversDomainLocator;
@@ -86,7 +87,7 @@ public class JaversAuditEventDAOTest {
     }
 
     @Test
-    public void searchForSnapshots() {
+    public void searchForUserSnapshots() {
         UserTO user01 = new UserTO();
         user01.setKey(UUID.randomUUID().toString());
         user01.setUsername("testuser");
@@ -117,7 +118,7 @@ public class JaversAuditEventDAOTest {
     }
 
     @Test
-    public void searchForChanges() {
+    public void searchForUserChanges() {
         UserTO user01 = new UserTO();
         user01.setKey(UUID.randomUUID().toString());
         user01.setUsername("testuser");
@@ -176,6 +177,37 @@ public class JaversAuditEventDAOTest {
                         && c.getNewValues().contains("other_v2")));
     }
 
+    @Test
+    public void searchForGroupSnapshots() {
+        GroupTO group01 = new GroupTO();
+        group01.setKey(UUID.randomUUID().toString());
+        group01.setName("testgroup");
+
+        List<Shadow<GroupTO>> shadows0To100 = generateGroupShadows(group01, 0, 100);
+        List<Shadow<GroupTO>> shadows100To200 = generateUserShadows(group01, 100, 190);
+
+        when(javers.findShadowsAndStream(ArgumentMatchers.any(JqlQuery.class))).thenAnswer(ic -> shadows0To100.stream())
+                .thenAnswer(ic -> shadows100To200.stream());
+
+        // first page
+        Page<ShadowTO<UserTO>> events0To100 =
+                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(0, 100), UserTO.class);
+        assertEquals(100, events0To100.getTotalElements());
+        assertTrue(events0To100.getContent()
+                .getFirst()
+                .getWhen()
+                .truncatedTo(ChronoUnit.HOURS)
+                .isEqual(OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS)));
+        assertEquals("admin_of_testuser_v0", events0To100.getContent().getFirst().getWho());
+        assertEquals("testuser_v0", events0To100.getContent().getFirst().getAnyTO().getUsername());
+        assertEquals("testuser_v11", events0To100.getContent().get(11).getAnyTO().getUsername());
+        // second page
+        Page<ShadowTO<UserTO>> events100To200 =
+                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(1, 100), UserTO.class);
+        assertEquals(90, events100To200.getTotalElements());
+        assertEquals("testuser_v185", events100To200.getContent().get(85).getAnyTO().getUsername());
+    }
+    
     private List<Shadow<UserTO>> generateUserShadows(final UserTO user01, final int start, final int end) {
         List<Shadow<UserTO>> shadows = new ArrayList<>();
         for (int i = start; i < end; i++) {

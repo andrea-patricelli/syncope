@@ -420,6 +420,8 @@ public abstract class AbstractITCase {
     protected static boolean IS_EXT_SEARCH_ENABLED = false;
 
     protected static boolean IS_NEO4J_PERSISTENCE = false;
+    
+    protected static boolean IS_JAVERS_ENABLED = false;
 
     private static void initExtSearch(
             final ImplementationService implementationService,
@@ -517,6 +519,8 @@ public abstract class AbstractITCase {
         IS_EXT_SEARCH_ENABLED = IS_ELASTICSEARCH_ENABLED || IS_OPENSEARCH_ENABLED;
 
         IS_NEO4J_PERSISTENCE = anySearchDAO.get("resource").asText().contains("neo4j");
+
+        IS_JAVERS_ENABLED = !beans.findValues("javersAuditEventDAO").isEmpty();
 
         if (!IS_EXT_SEARCH_ENABLED) {
             return;

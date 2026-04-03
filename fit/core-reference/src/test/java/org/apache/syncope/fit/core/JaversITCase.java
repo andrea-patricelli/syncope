@@ -22,6 +22,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assumptions.assumeTrue;
 
 import jakarta.ws.rs.core.GenericType;
 import java.util.List;
@@ -63,11 +64,10 @@ import org.apache.syncope.common.rest.api.service.UserService;
 import org.apache.syncope.fit.AbstractITCase;
 import org.javers.core.diff.changetype.PropertyChangeType;
 import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 public class JaversITCase extends AbstractITCase {
-
-    private static Boolean ENABLED;
 
     private static final String BELLINI_KEY = "c9b2dec2-00a7-4855-97c0-d854842b4b24";
 
@@ -79,6 +79,8 @@ public class JaversITCase extends AbstractITCase {
 
     @BeforeAll
     static void setUp() {
+        assumeTrue(IS_JAVERS_ENABLED);
+
         RelationshipTypeTO relTypeTO = RELATIONSHIP_TYPE_SERVICE.read("neighborhood");
 
         if (relTypeTO.getTypeExtension(AnyTypeKind.USER.name()).isEmpty()) {
@@ -91,8 +93,13 @@ public class JaversITCase extends AbstractITCase {
         }
     }
 
+    @BeforeEach
+    public void check() {
+        assumeTrue(IS_JAVERS_ENABLED);
+    }
+
     @Test
-    public void crudEvents() {
+    public void crudUserEvents() {
         GroupTO otherchild = GROUP_SERVICE.read("f779c0d4-633b-4be5-8f57-32eb478a3ca5");
         GroupTO additional = GROUP_SERVICE.read("034740a9-fa10-453b-af37-dc7897e98fb1");
         GroupTO artDirector = GROUP_SERVICE.read("ece66293-8f31-4a84-8e8d-23da36e70846");
@@ -112,20 +119,19 @@ public class JaversITCase extends AbstractITCase {
                 .add(new RelationshipTO.Builder("neighborhood").plainAttr(
                         new Attr.Builder("aLong").value("1111").build()).otherEnd(HP_PRINTER_KEY).build());
         // linked accounts
-        LinkedAccountTO pullFromLdap2 =
-                new LinkedAccountTO.Builder(RESOURCE_NAME_LDAP, "pullFromLdap2").username("pullFromLdap2")
-                        .password("Password123!")
-                        .build();
-        pullFromLdap2.getPlainAttrs().add(attr("aLong", "1234"));
-        pullFromLdap2.getPlainAttrs().add(attr("cool", "true"));
-        pullFromLdap2.getPlainAttrs().add(attr("ctype", "actype"));
+        LinkedAccountTO linkedAccountOnNoPropagation =
+                new LinkedAccountTO.Builder(RESOURCE_NAME_NOPROPAGATION, "linkedAccountOnNoPropagation").username(
+                        "linkedAccountOnNoPropagation").password("Password123!").build();
+        linkedAccountOnNoPropagation.getPlainAttrs().add(attr("aLong", "1234"));
+        linkedAccountOnNoPropagation.getPlainAttrs().add(attr("cool", "true"));
+        linkedAccountOnNoPropagation.getPlainAttrs().add(attr("ctype", "actype"));
 
         LinkedAccountTO testUser02 =
                 new LinkedAccountTO.Builder(RESOURCE_NAME_TESTDB, "testUser02").password("Password123!").build();
         testUser02.getPlainAttrs().add(attr("aLong", "5678"));
         testUser02.getPlainAttrs().add(attr("surname", "testUser02"));
 
-        userCR.getLinkedAccounts().add(pullFromLdap2);
+        userCR.getLinkedAccounts().add(linkedAccountOnNoPropagation);
         userCR.getLinkedAccounts().add(testUser02);
 
         // set user manager bellini
@@ -168,17 +174,18 @@ public class JaversITCase extends AbstractITCase {
             userUR.getMemberships()
                     .add(new MembershipUR.Builder(artDirector.getKey()).operation(PatchOperation.ADD_REPLACE).build());
 
-            // remove testUser02 linked account and change pullFromLdap2 attributes
+            // remove testUser02 linked account and change linkedAccountOnNoPropagation attributes
             userUR.getLinkedAccounts()
                     .add(new LinkedAccountUR.Builder().operation(PatchOperation.DELETE)
                             .linkedAccountTO(testUser02)
                             .build());
-            pullFromLdap2.getPlainAttrs().removeIf(pa -> "cool".equals(pa.getSchema()));
-            pullFromLdap2.getPlainAttr("aLong").orElseThrow().getValues().clear();
-            pullFromLdap2.getPlainAttr("aLong").orElseThrow().getValues().add("4321");
-            pullFromLdap2.getPlainAttr("ctype").orElseThrow().getValues().clear();
-            pullFromLdap2.getPlainAttr("ctype").orElseThrow().getValues().add("anewctype");
-            userUR.getLinkedAccounts().add(new LinkedAccountUR.Builder().linkedAccountTO(pullFromLdap2).build());
+            linkedAccountOnNoPropagation.getPlainAttrs().removeIf(pa -> "cool".equals(pa.getSchema()));
+            linkedAccountOnNoPropagation.getPlainAttr("aLong").orElseThrow().getValues().clear();
+            linkedAccountOnNoPropagation.getPlainAttr("aLong").orElseThrow().getValues().add("4321");
+            linkedAccountOnNoPropagation.getPlainAttr("ctype").orElseThrow().getValues().clear();
+            linkedAccountOnNoPropagation.getPlainAttr("ctype").orElseThrow().getValues().add("anewctype");
+            userUR.getLinkedAccounts()
+                    .add(new LinkedAccountUR.Builder().linkedAccountTO(linkedAccountOnNoPropagation).build());
 
             // first update
             userTO = updateUser(userUR).getEntity();
@@ -244,13 +251,12 @@ public class JaversITCase extends AbstractITCase {
             assertTrue(shadowCommit1.getAnyTO()
                     .getLinkedAccounts()
                     .stream()
-                    .anyMatch(la -> la.getConnObjectKeyValue().equals("pullFromLdap2") && RESOURCE_NAME_LDAP.equals(
-                            la.getResource()) && la.getUsername().equals("pullFromLdap2") && la.getPlainAttr("aLong")
-                            .isPresent() && la.getPlainAttr("aLong").get().getValues().contains("1234")
-                            && la.getPlainAttr("cool").isPresent() && la.getPlainAttr("cool")
-                            .get()
-                            .getValues()
-                            .contains("true") && la.getPlainAttr("ctype").isPresent() && la.getPlainAttr("ctype")
+                    .anyMatch(la -> la.getConnObjectKeyValue().equals("linkedAccountOnNoPropagation")
+                            && RESOURCE_NAME_NOPROPAGATION.equals(la.getResource()) && la.getUsername()
+                            .equals("linkedAccountOnNoPropagation") && la.getPlainAttr("aLong").isPresent()
+                            && la.getPlainAttr("aLong").get().getValues().contains("1234") && la.getPlainAttr("cool")
+                            .isPresent() && la.getPlainAttr("cool").get().getValues().contains("true")
+                            && la.getPlainAttr("ctype").isPresent() && la.getPlainAttr("ctype")
                             .get()
                             .getValues()
                             .contains("actype")));
@@ -334,11 +340,14 @@ public class JaversITCase extends AbstractITCase {
             assertTrue(shadowCommit2.getAnyTO()
                     .getLinkedAccounts()
                     .stream()
-                    .anyMatch(la -> la.getConnObjectKeyValue().equals("pullFromLdap2") && RESOURCE_NAME_LDAP.equals(
-                            la.getResource()) && la.getUsername().equals("pullFromLdap2") && la.getPlainAttr("aLong")
-                            .isPresent() && la.getPlainAttr("aLong").get().getValues().contains("4321")
-                            && la.getPlainAttr("cool").isEmpty() && la.getPlainAttr("ctype").isPresent()
-                            && la.getPlainAttr("ctype").get().getValues().contains("anewctype")));
+                    .anyMatch(la -> la.getConnObjectKeyValue().equals("linkedAccountOnNoPropagation")
+                            && RESOURCE_NAME_NOPROPAGATION.equals(la.getResource()) && la.getUsername()
+                            .equals("linkedAccountOnNoPropagation") && la.getPlainAttr("aLong").isPresent()
+                            && la.getPlainAttr("aLong").get().getValues().contains("4321") && la.getPlainAttr("cool")
+                            .isEmpty() && la.getPlainAttr("ctype").isPresent() && la.getPlainAttr("ctype")
+                            .get()
+                            .getValues()
+                            .contains("anewctype")));
             assertTrue(shadowCommit2.getAnyTO()
                     .getLinkedAccounts()
                     .stream()
@@ -406,33 +415,39 @@ public class JaversITCase extends AbstractITCase {
                             .getValueChanges()
                             .stream()
                             .anyMatch(vc -> "linkedAccounts".equals(vc.getField()) && vc.getNewValues()
-                                    .contains("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP + "]")
-                                    && vc.getOldValues()
+                                    .contains(
+                                            "linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
+                                                    + "]") && vc.getOldValues()
                                     .contains("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB + "]")
                                     && vc.getOldValues()
-                                    .contains("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP + "]"))));
+                                    .contains(
+                                            "linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
+                                                    + "]"))));
             // changes in linked accounts attributes
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
                             .stream()
-                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
-                                    + "].plainAttrs[aLong]").equals(vc.getField()) && vc.getOldValues().contains("1234")
-                                    && vc.getNewValues().contains("4321"))));
+                            .anyMatch(
+                                    vc -> ("linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
+                                            + "].plainAttrs[aLong]").equals(vc.getField()) && vc.getOldValues()
+                                            .contains("1234") && vc.getNewValues().contains("4321"))));
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
                             .stream()
-                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
-                                    + "].plainAttrs[ctype]").equals(vc.getField()) && vc.getOldValues()
-                                    .contains("actype") && vc.getNewValues().contains("anewctype"))));
+                            .anyMatch(
+                                    vc -> ("linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
+                                            + "].plainAttrs[ctype]").equals(vc.getField()) && vc.getOldValues()
+                                            .contains("actype") && vc.getNewValues().contains("anewctype"))));
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
                             .stream()
-                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
-                                    + "].plainAttrs[cool]").equals(vc.getField())
-                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+                            .anyMatch(
+                                    vc -> ("linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
+                                            + "].plainAttrs[cool]").equals(vc.getField())
+                                            && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
@@ -471,41 +486,45 @@ public class JaversITCase extends AbstractITCase {
                             .anyMatch(vc -> "relationships[Canon MF 8030cn.plainAttrs[aLong]".equals(vc.getField()))));
 
             // search by a different author
-            assertTrue(JAVERS_AUDIT_USER_SERVICE.changes(userKey, "bellini", null, null, 1, 25).isEmpty());
+            assertTrue(JAVERS_AUDIT_USER_SERVICE.changes(userKey, "anotheradmin@syncope.apache.org", null, null, 1, 25)
+                    .isEmpty());
 
-            // update with user bellini
-            RoleTO role = new RoleTO();
-            role.getRealms().add(SyncopeConstants.ROOT_REALM);
-            role.setKey("manager");
-            role.getEntitlements().add("USER_CREATE");
-            role.getEntitlements().add("USER_UPDATE");
-            role.getEntitlements().add("USER_SEARCH");
-            role.getEntitlements().add("ANYTYPECLASS_READ");
-            role.getEntitlements().add("ANYTYPE_LIST");
-            role.getEntitlements().add("ANYTYPECLASS_LIST");
-            role.getEntitlements().add("RELATIONSHIPTYPE_LIST");
-            role.getEntitlements().add("USER_READ");
-            role.getEntitlements().add("ANYTYPE_READ");
-            role.getEntitlements().add("REALM_SEARCH");
-            role.getEntitlements().add("GROUP_SEARCH");
-            role = createRole(role);
+            // update with manager user
+            RoleTO anotherAdminRole = new RoleTO();
+            anotherAdminRole.getRealms().add(SyncopeConstants.ROOT_REALM);
+            anotherAdminRole.setKey("manager");
+            anotherAdminRole.getEntitlements().add("USER_CREATE");
+            anotherAdminRole.getEntitlements().add("USER_UPDATE");
+            anotherAdminRole.getEntitlements().add("USER_SEARCH");
+            anotherAdminRole.getEntitlements().add("ANYTYPECLASS_READ");
+            anotherAdminRole.getEntitlements().add("ANYTYPE_LIST");
+            anotherAdminRole.getEntitlements().add("ANYTYPECLASS_LIST");
+            anotherAdminRole.getEntitlements().add("RELATIONSHIPTYPE_LIST");
+            anotherAdminRole.getEntitlements().add("USER_READ");
+            anotherAdminRole.getEntitlements().add("ANYTYPE_READ");
+            anotherAdminRole.getEntitlements().add("REALM_SEARCH");
+            anotherAdminRole.getEntitlements().add("GROUP_SEARCH");
+            anotherAdminRole = createRole(anotherAdminRole);
 
-            updateUser(new UserUR.Builder(USER_SERVICE.read("bellini").getKey()).role(
-                    new StringPatchItem.Builder().value(role.getKey()).build()).build());
+            userCR = UserITCase.getUniqueSample("anotheradmin@syncope.apache.org");
+            userCR.setPassword("Password123!");
+            userCR.getRoles().add(anotherAdminRole.getKey());
+            UserTO anotherAdmin = createUser(userCR).getEntity();
 
-            CLIENT_FACTORY.create("bellini", ADMIN_PWD)
+            CLIENT_FACTORY.create(anotherAdmin.getUsername(), "Password123!")
                     .getService(UserService.class)
                     .update(new UserUR.Builder(userKey).plainAttr(attrAddReplacePatch("firstname", "updated_firstname"))
                             .build());
             // now there is a single change by author
-            assertEquals(1, JAVERS_AUDIT_USER_SERVICE.changes(userKey, "bellini", null, null, 1, 25).size());
+            assertEquals(1,
+                    JAVERS_AUDIT_USER_SERVICE.changes(userKey, anotherAdmin.getUsername(), null, null, 1, 25).size());
 
             // search by author only, without the entity key
-            List<ChangesByCommitTO> belliniChanges =
-                    JAVERS_AUDIT_USER_SERVICE.changes(null, "bellini", null, null, 1, 25);
-            //            assertEquals(1, belliniChanges.size());
-            assertTrue(belliniChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
-            assertTrue(belliniChanges.getFirst()
+            List<ChangesByCommitTO> anotherAdminChanges =
+                    JAVERS_AUDIT_USER_SERVICE.changes(null, anotherAdmin.getUsername(), null, null, 1, 25);
+            //            assertEquals(1, anotherAdminChanges.size());
+            assertTrue(anotherAdminChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
+            assertTrue(anotherAdminChanges.getFirst()
                     .getChanges()
                     .getValueChanges()
                     .getFirst()
@@ -514,7 +533,7 @@ public class JaversITCase extends AbstractITCase {
 
             try {
                 // remove mandatory attribute surname to have the request rejected, changes shouldn't be audited
-                CLIENT_FACTORY.create("bellini", ADMIN_PWD)
+                CLIENT_FACTORY.create(anotherAdmin.getUsername(), "Password123!")
                         .getService(UserService.class)
                         .update(new UserUR.Builder(userKey).plainAttr(
                                 new AttrPatch.Builder(new Attr.Builder("surname").build()).operation(
@@ -522,10 +541,11 @@ public class JaversITCase extends AbstractITCase {
             } catch (SyncopeClientException sce) {
             }
 
-            belliniChanges = JAVERS_AUDIT_USER_SERVICE.changes(userKey, "bellini", null, null, 1, 25);
-            //            assertEquals(1, belliniChanges.size());
-            assertTrue(belliniChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
-            assertTrue(belliniChanges.getFirst()
+            anotherAdminChanges =
+                    JAVERS_AUDIT_USER_SERVICE.changes(userKey, anotherAdmin.getUsername(), null, null, 1, 25);
+            //            assertEquals(1, anotherAdminChanges.size());
+            assertTrue(anotherAdminChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
+            assertTrue(anotherAdminChanges.getFirst()
                     .getChanges()
                     .getValueChanges()
                     .getFirst()
@@ -554,7 +574,7 @@ public class JaversITCase extends AbstractITCase {
     void pullEvents() {
         // modifica da evento di pull tracciata
         PullTaskTO pullTask = new PullTaskTO();
-        pullTask.setResource(RESOURCE_NAME_LDAP);
+        pullTask.setResource(RESOURCE_NAME_TESTDB2);
         pullTask.setDestinationRealm(SyncopeConstants.ROOT_REALM);
         pullTask.setRemediation(true);
         pullTask.setPerformCreate(true);
@@ -563,12 +583,12 @@ public class JaversITCase extends AbstractITCase {
         pullTask.setMatchingRule(MatchingRule.UPDATE);
 
         RECONCILIATION_SERVICE.pull(
-                new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_LDAP).fiql("uid==pullFromLDAP").build(),
+                new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_TESTDB2).fiql("ID==rossini").build(),
                 pullTask);
 
-        UserTO pullFromLDAP = USER_SERVICE.read("pullFromLDAP");
+        UserTO rossini = USER_SERVICE.read("rossini");
 
-        PagedResult<ShadowTO<UserTO>> shadows = JAVERS_AUDIT_USER_SERVICE.shadows(pullFromLDAP.getKey(), 1, 25);
+        PagedResult<ShadowTO<UserTO>> shadows = JAVERS_AUDIT_USER_SERVICE.shadows(rossini.getKey(), 1, 25);
         assertTrue(shadows.getTotalCount() >= 1); // TODO rimuovere prima della pr
         //        assertEquals(1, shadows.getTotalCount());
         //        assertEquals(1, shadows.getResult().size());
@@ -583,9 +603,9 @@ public class JaversITCase extends AbstractITCase {
 
         // re-pull and generate an update
         RECONCILIATION_SERVICE.pull(
-                new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_LDAP).fiql("uid==pullFromLDAP").build(),
+                new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_TESTDB2).fiql("ID==rossini").build(),
                 pullTask);
-        shadows = JAVERS_AUDIT_USER_SERVICE.shadows(pullFromLDAP.getKey(), 1, 25);
+        shadows = JAVERS_AUDIT_USER_SERVICE.shadows(rossini.getKey(), 1, 25);
         assertEquals(2, shadows.getTotalCount());
         assertEquals(2, shadows.getResult().size());
     }
