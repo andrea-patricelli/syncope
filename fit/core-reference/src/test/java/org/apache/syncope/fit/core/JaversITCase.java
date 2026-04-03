@@ -32,14 +32,17 @@ import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.SyncopeClientException;
 import org.apache.syncope.common.lib.SyncopeConstants;
 import org.apache.syncope.common.lib.request.AttrPatch;
+import org.apache.syncope.common.lib.request.LinkedAccountUR;
 import org.apache.syncope.common.lib.request.MembershipUR;
 import org.apache.syncope.common.lib.request.PasswordPatch;
 import org.apache.syncope.common.lib.request.RelationshipUR;
 import org.apache.syncope.common.lib.request.StringPatchItem;
+import org.apache.syncope.common.lib.request.StringReplacePatchItem;
 import org.apache.syncope.common.lib.request.UserCR;
 import org.apache.syncope.common.lib.request.UserUR;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.GroupTO;
+import org.apache.syncope.common.lib.to.LinkedAccountTO;
 import org.apache.syncope.common.lib.to.MembershipTO;
 import org.apache.syncope.common.lib.to.PagedResult;
 import org.apache.syncope.common.lib.to.ProvisioningResult;
@@ -58,12 +61,17 @@ import org.apache.syncope.common.rest.api.beans.ReconQuery;
 import org.apache.syncope.common.rest.api.service.JaversAuditService;
 import org.apache.syncope.common.rest.api.service.UserService;
 import org.apache.syncope.fit.AbstractITCase;
+import org.javers.core.diff.changetype.PropertyChangeType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 public class JaversITCase extends AbstractITCase {
 
     private static Boolean ENABLED;
+
+    private static final String BELLINI_KEY = "c9b2dec2-00a7-4855-97c0-d854842b4b24";
+
+    private static final String PUCCINI_KEY = "823074dc-d280-436d-a7dd-07399fae48ec";
 
     private static final String HP_PRINTER_KEY = "fc6dbc3a-6c07-4965-8781-921e7401a4a5";
 
@@ -103,6 +111,25 @@ public class JaversITCase extends AbstractITCase {
         userCR.getRelationships()
                 .add(new RelationshipTO.Builder("neighborhood").plainAttr(
                         new Attr.Builder("aLong").value("1111").build()).otherEnd(HP_PRINTER_KEY).build());
+        // linked accounts
+        LinkedAccountTO pullFromLdap2 =
+                new LinkedAccountTO.Builder(RESOURCE_NAME_LDAP, "pullFromLdap2").username("pullFromLdap2")
+                        .password("Password123!")
+                        .build();
+        pullFromLdap2.getPlainAttrs().add(attr("aLong", "1234"));
+        pullFromLdap2.getPlainAttrs().add(attr("cool", "true"));
+        pullFromLdap2.getPlainAttrs().add(attr("ctype", "actype"));
+
+        LinkedAccountTO testUser02 =
+                new LinkedAccountTO.Builder(RESOURCE_NAME_TESTDB, "testUser02").password("Password123!").build();
+        testUser02.getPlainAttrs().add(attr("aLong", "5678"));
+        testUser02.getPlainAttrs().add(attr("surname", "testUser02"));
+
+        userCR.getLinkedAccounts().add(pullFromLdap2);
+        userCR.getLinkedAccounts().add(testUser02);
+
+        // set user manager bellini
+        userCR.setUManager(BELLINI_KEY);
 
         UserTO userTO = createUser(userCR).getEntity();
         assertEquals(2, userTO.getMemberships().size());
@@ -112,6 +139,9 @@ public class JaversITCase extends AbstractITCase {
             UserUR userUR = new UserUR();
             userUR.setKey(userKey);
             userUR.setPassword(new PasswordPatch.Builder().value("new2Password").build());
+
+            // change user manager
+            userUR.setUManager(new StringReplacePatchItem.Builder().value(PUCCINI_KEY).build());
 
             String oldUserId = userTO.getPlainAttr("userId").orElseThrow().getValues().getFirst();
             String oldFullname = userTO.getPlainAttr("fullname").orElseThrow().getValues().getFirst();
@@ -138,6 +168,19 @@ public class JaversITCase extends AbstractITCase {
             userUR.getMemberships()
                     .add(new MembershipUR.Builder(artDirector.getKey()).operation(PatchOperation.ADD_REPLACE).build());
 
+            // remove testUser02 linked account and change pullFromLdap2 attributes
+            userUR.getLinkedAccounts()
+                    .add(new LinkedAccountUR.Builder().operation(PatchOperation.DELETE)
+                            .linkedAccountTO(testUser02)
+                            .build());
+            pullFromLdap2.getPlainAttrs().removeIf(pa -> "cool".equals(pa.getSchema()));
+            pullFromLdap2.getPlainAttr("aLong").orElseThrow().getValues().clear();
+            pullFromLdap2.getPlainAttr("aLong").orElseThrow().getValues().add("4321");
+            pullFromLdap2.getPlainAttr("ctype").orElseThrow().getValues().clear();
+            pullFromLdap2.getPlainAttr("ctype").orElseThrow().getValues().add("anewctype");
+            userUR.getLinkedAccounts().add(new LinkedAccountUR.Builder().linkedAccountTO(pullFromLdap2).build());
+
+            // first update
             userTO = updateUser(userUR).getEntity();
             assertNotNull(userTO);
 
@@ -173,6 +216,7 @@ public class JaversITCase extends AbstractITCase {
                     .orElseThrow();
             assertEquals("admin", shadowCommit1.getWho());
             assertEquals(userTO.getUsername(), shadowCommit1.getAnyTO().getUsername());
+            assertEquals(BELLINI_KEY, shadowCommit1.getAnyTO().getUManager());
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("userId").isPresent());
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("userId").get().getValues().contains(oldUserId));
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("fullname").isPresent());
@@ -195,6 +239,33 @@ public class JaversITCase extends AbstractITCase {
                     .getValues()
                     .contains("1111"));
 
+            // linked accounts in shadow 1
+            assertFalse(shadowCommit1.getAnyTO().getLinkedAccounts().isEmpty());
+            assertTrue(shadowCommit1.getAnyTO()
+                    .getLinkedAccounts()
+                    .stream()
+                    .anyMatch(la -> la.getConnObjectKeyValue().equals("pullFromLdap2") && RESOURCE_NAME_LDAP.equals(
+                            la.getResource()) && la.getUsername().equals("pullFromLdap2") && la.getPlainAttr("aLong")
+                            .isPresent() && la.getPlainAttr("aLong").get().getValues().contains("1234")
+                            && la.getPlainAttr("cool").isPresent() && la.getPlainAttr("cool")
+                            .get()
+                            .getValues()
+                            .contains("true") && la.getPlainAttr("ctype").isPresent() && la.getPlainAttr("ctype")
+                            .get()
+                            .getValues()
+                            .contains("actype")));
+            assertTrue(shadowCommit1.getAnyTO()
+                    .getLinkedAccounts()
+                    .stream()
+                    .anyMatch(la -> la.getConnObjectKeyValue().equals("testUser02") && RESOURCE_NAME_TESTDB.equals(
+                            la.getResource()) && la.getPlainAttr("surname").isPresent() && la.getPlainAttr("surname")
+                            .get()
+                            .getValues()
+                            .contains("testUser02") && la.getPlainAttr("aLong").isPresent() && la.getPlainAttr("aLong")
+                            .get()
+                            .getValues()
+                            .contains("5678")));
+
             ShadowTO<UserTO> shadowCommit2 = shadows.getResult()
                     .stream()
                     .filter(shadow -> "UPDATE".equals(shadow.getType()) && shadow.getVersion() == 2L)
@@ -202,6 +273,7 @@ public class JaversITCase extends AbstractITCase {
                     .orElseThrow();
             assertEquals("admin", shadowCommit2.getWho());
             assertEquals(userTO.getUsername(), shadowCommit1.getAnyTO().getUsername());
+            assertEquals(PUCCINI_KEY, userTO.getUManager());
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("userId").isPresent());
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("userId").get().getValues().contains(newUserId));
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("fullname").isPresent());
@@ -257,10 +329,31 @@ public class JaversITCase extends AbstractITCase {
                     .get()
                     .getValues()
                     .contains("2222"));
+            // linked accounts in shadow 2
+            assertEquals(1, shadowCommit2.getAnyTO().getLinkedAccounts().size());
+            assertTrue(shadowCommit2.getAnyTO()
+                    .getLinkedAccounts()
+                    .stream()
+                    .anyMatch(la -> la.getConnObjectKeyValue().equals("pullFromLdap2") && RESOURCE_NAME_LDAP.equals(
+                            la.getResource()) && la.getUsername().equals("pullFromLdap2") && la.getPlainAttr("aLong")
+                            .isPresent() && la.getPlainAttr("aLong").get().getValues().contains("4321")
+                            && la.getPlainAttr("cool").isEmpty() && la.getPlainAttr("ctype").isPresent()
+                            && la.getPlainAttr("ctype").get().getValues().contains("anewctype")));
+            assertTrue(shadowCommit2.getAnyTO()
+                    .getLinkedAccounts()
+                    .stream()
+                    .noneMatch(la -> la.getConnObjectKeyValue().equals("testUser02") && RESOURCE_NAME_TESTDB.equals(
+                            la.getResource())));
 
-            // 2. search by entity key
+            // 2. search changes by entity key
             List<ChangesByCommitTO> changes = JAVERS_AUDIT_USER_SERVICE.changes(userKey, "admin", null, null, 1, 25);
             assertFalse(changes.isEmpty());
+            assertTrue(changes.stream()
+                    .anyMatch(pc -> pc.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "uManager".equals(vc.getField()) && vc.getOldValues().contains(BELLINI_KEY)
+                                    && vc.getNewValues().contains(PUCCINI_KEY))));
             // changes key must match the user key
             assertTrue(changes.stream()
                     .allMatch(c -> c.getChanges()
@@ -307,8 +400,54 @@ public class JaversITCase extends AbstractITCase {
                             .anyMatch(vc -> "auxClasses".equals(vc.getField()) && vc.getNewValues().contains("csv")
                                     && vc.getOldValues().contains("other"))));
 
-            // TODO changes in linked accounts
-            
+            // changes in linked accounts
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "linkedAccounts".equals(vc.getField()) && vc.getNewValues()
+                                    .contains("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP + "]")
+                                    && vc.getOldValues()
+                                    .contains("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB + "]")
+                                    && vc.getOldValues()
+                                    .contains("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP + "]"))));
+            // changes in linked accounts attributes
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
+                                    + "].plainAttrs[aLong]").equals(vc.getField()) && vc.getOldValues().contains("1234")
+                                    && vc.getNewValues().contains("4321"))));
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
+                                    + "].plainAttrs[ctype]").equals(vc.getField()) && vc.getOldValues()
+                                    .contains("actype") && vc.getNewValues().contains("anewctype"))));
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> ("linkedAccounts[pullFromLdap2," + RESOURCE_NAME_LDAP
+                                    + "].plainAttrs[cool]").equals(vc.getField())
+                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> ("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB
+                                    + "].plainAttrs[surname]").equals(vc.getField())
+                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> ("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB
+                                    + "].plainAttrs[aLong]").equals(vc.getField())
+                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+
             // changes in relationships and their attributes
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
@@ -330,7 +469,7 @@ public class JaversITCase extends AbstractITCase {
                             .getValueChanges()
                             .stream()
                             .anyMatch(vc -> "relationships[Canon MF 8030cn.plainAttrs[aLong]".equals(vc.getField()))));
-            
+
             // search by a different author
             assertTrue(JAVERS_AUDIT_USER_SERVICE.changes(userKey, "bellini", null, null, 1, 25).isEmpty());
 

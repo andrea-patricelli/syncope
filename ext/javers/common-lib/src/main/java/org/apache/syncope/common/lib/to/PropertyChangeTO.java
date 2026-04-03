@@ -99,7 +99,7 @@ public class PropertyChangeTO implements BaseBean {
         return newValues;
     }
     
-    public boolean isEmpty(){
+    public boolean isEmpty() {
         return oldValues.isEmpty() && newValues.isEmpty();
     }
 

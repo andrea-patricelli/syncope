@@ -13,6 +13,7 @@ import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.to.AnyTO;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.ChangesTO;
+import org.apache.syncope.common.lib.to.LinkedAccountTO;
 import org.apache.syncope.common.lib.to.MembershipTO;
 import org.apache.syncope.common.lib.to.PropertyChangeTO;
 import org.apache.syncope.common.lib.to.RelationshipTO;
@@ -270,7 +271,87 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                                         + mpa.getSchema() + "]");
                                         plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
 
-                                        if(!plainAttrChangeTO.isEmpty()) {
+                                        if (!plainAttrChangeTO.isEmpty()) {
+                                            propertyChangeTOs.add(plainAttrChangeTO);
+                                        }
+                                    }));
+                            break;
+                        case "linkedAccounts":
+                            List<LinkedAccountTO> oldLinkedAccounts = ((CollectionChange<?>) propertyChange).getLeft()
+                                    .stream()
+                                    .map(LinkedAccountTO.class::cast)
+                                    .toList();
+                            List<LinkedAccountTO> newLinkedAccounts = ((CollectionChange<?>) propertyChange).getRight()
+                                    .stream()
+                                    .map(LinkedAccountTO.class::cast)
+                                    .toList();
+                            propertyChangeTO.getOldValues()
+                                    .addAll(oldLinkedAccounts.stream()
+                                            .map(la -> "linkedAccounts[" + la.getConnObjectKeyValue() + ","
+                                                    + la.getResource() + "]")
+                                            .toList());
+                            if (PropertyChangeType.PROPERTY_ADDED == propertyChange.getChangeType()
+                                    || PropertyChangeType.PROPERTY_VALUE_CHANGED == propertyChange.getChangeType()) {
+                                propertyChangeTO.getNewValues()
+                                        .addAll(newLinkedAccounts.stream()
+                                                .map(la -> "linkedAccounts[" + la.getConnObjectKeyValue() + ","
+                                                        + la.getResource() + "]")
+                                                .toList());
+                            }
+                            if (!propertyChangeTO.isEmpty()) {
+                                propertyChangeTOs.add(propertyChangeTO);
+                            }
+
+                            // also manage linked accounts attributes
+                            // first manage linked accounts added or updated
+                            for (LinkedAccountTO newLinkedAccount : newLinkedAccounts) {
+                                // if present both in old and new relationships, it's an update
+                                oldLinkedAccounts.stream()
+                                        .filter(ola -> ola.getConnObjectKeyValue()
+                                                .equals(newLinkedAccount.getConnObjectKeyValue()))
+                                        .findFirst()
+                                        .ifPresentOrElse(oldRel -> javers.compareCollections(oldRel.getPlainAttrs(),
+                                                                newLinkedAccount.getPlainAttrs(), Attr.class)
+                                                        .getChangesByType(PropertyChange.class)
+                                                        .forEach(pc -> plainAttrsDiff((CollectionChange<?>) pc,
+                                                                propertyChangeTOs,
+                                                                propertyChange.getAffectedGlobalId().value(),
+                                                                "linkedAccounts[" 
+                                                                        + newLinkedAccount.getConnObjectKeyValue()
+                                                                        + "," + newLinkedAccount.getResource() + "].")),
+                                                () -> newLinkedAccount.getPlainAttrs().forEach(mpa -> {
+                                                    PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();
+                                                    plainAttrChangeTO.setEntityKey(
+                                                            propertyChange.getAffectedGlobalId().value());
+                                                    plainAttrChangeTO.setChangeType(
+                                                            PropertyChangeType.PROPERTY_ADDED.name());
+                                                    plainAttrChangeTO.setField(
+                                                            "linkedAccounts[" + newLinkedAccount.getConnObjectKeyValue()
+                                                                    + "," + newLinkedAccount.getResource()
+                                                                    + "].plainAttrs[" + mpa.getSchema() + "]");
+                                                    plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
+
+                                                    if (!plainAttrChangeTO.isEmpty()) {
+                                                        propertyChangeTOs.add(plainAttrChangeTO);
+                                                    }
+                                                }));
+                            }
+                            // then manage linked accounts removed
+                            oldLinkedAccounts.stream()
+                                    .filter(oldLinkedAccount -> newLinkedAccounts.stream()
+                                            .noneMatch(newLinkedAccount -> newLinkedAccount.getConnObjectKeyValue()
+                                                    .equals(oldLinkedAccount.getConnObjectKeyValue())))
+                                    .forEach(oldLinkedAccount -> oldLinkedAccount.getPlainAttrs().forEach(mpa -> {
+                                        PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();
+                                        plainAttrChangeTO.setEntityKey(propertyChange.getAffectedGlobalId().value());
+                                        plainAttrChangeTO.setChangeType(PropertyChangeType.PROPERTY_REMOVED.name());
+                                        plainAttrChangeTO.setField(
+                                                "linkedAccounts[" + oldLinkedAccount.getConnObjectKeyValue() + ","
+                                                        + oldLinkedAccount.getResource() + "].plainAttrs["
+                                                        + mpa.getSchema() + "]");
+                                        plainAttrChangeTO.getNewValues().addAll(mpa.getValues());
+
+                                        if (!plainAttrChangeTO.isEmpty()) {
                                             propertyChangeTOs.add(plainAttrChangeTO);
                                         }
                                     }));

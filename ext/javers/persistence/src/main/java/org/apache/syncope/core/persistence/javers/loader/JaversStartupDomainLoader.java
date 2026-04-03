@@ -134,7 +134,8 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
                                 .build())
                         .registerIgnoredClassesStrategy(c -> c.getName().startsWith("org.apache.syncope"))
                         .build()).getBeanDefinition());
-        LOG.info("Javers for domain {} successfully inited. Bean definition for [{}] created", domain, javersBeanName);
+        LOG.info("Javers for domain {} successfully initiated. Bean definition for [{}] created", domain,
+                javersBeanName);
     }
 
     protected DefaultListableBeanFactory beanFactory() {
