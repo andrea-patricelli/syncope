@@ -140,6 +140,7 @@ import org.apache.syncope.common.rest.api.service.ConnectorService;
 import org.apache.syncope.common.rest.api.service.DelegationService;
 import org.apache.syncope.common.rest.api.service.GroupService;
 import org.apache.syncope.common.rest.api.service.ImplementationService;
+import org.apache.syncope.common.rest.api.service.JaversAuditGroupService;
 import org.apache.syncope.common.rest.api.service.JaversAuditUserService;
 import org.apache.syncope.common.rest.api.service.MailTemplateService;
 import org.apache.syncope.common.rest.api.service.MfaService;
@@ -398,6 +399,8 @@ public abstract class AbstractITCase {
     protected static ImpersonationService IMPERSONATION_SERVICE;
     
     protected static JaversAuditUserService JAVERS_AUDIT_USER_SERVICE;
+    
+    protected static JaversAuditGroupService JAVERS_AUDIT_GROUP_SERVICE;
 
     private static final String POP3_HOST = "localhost";
 
@@ -420,7 +423,7 @@ public abstract class AbstractITCase {
     protected static boolean IS_EXT_SEARCH_ENABLED = false;
 
     protected static boolean IS_NEO4J_PERSISTENCE = false;
-    
+
     protected static boolean IS_JAVERS_ENABLED = false;
 
     private static void initExtSearch(
@@ -496,6 +499,7 @@ public abstract class AbstractITCase {
         WEBAUTHN_REGISTRATION_SERVICE = ANONYMOUS_CLIENT.getService(WebAuthnRegistrationService.class);
         IMPERSONATION_SERVICE = ANONYMOUS_CLIENT.getService(ImpersonationService.class);
         JAVERS_AUDIT_USER_SERVICE = ANONYMOUS_CLIENT.getService(JaversAuditUserService.class);
+        JAVERS_AUDIT_GROUP_SERVICE = ANONYMOUS_CLIENT.getService(JaversAuditGroupService.class);
 
         String beansJSON = await().atMost(10, TimeUnit.SECONDS).pollInterval(1, TimeUnit.SECONDS).until(() -> {
             try {

@@ -1636,7 +1636,7 @@ under the License.
       </properties>
 
       <build>
-        <defaultGoal>clean verify</defaultGoal>
+<!--        <defaultGoal>clean verify</defaultGoal>-->
 
         <plugins>
           <plugin>

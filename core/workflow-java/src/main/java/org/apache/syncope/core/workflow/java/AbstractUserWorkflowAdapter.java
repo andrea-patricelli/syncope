@@ -254,10 +254,8 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
 
         // finally publish events for all groups affected by this operation, via membership
         user.getMemberships().forEach(m -> {
-            EntityLifecycleEvent<Group> event = new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(),
-                    AuthContextUtils.getDomain());
-            event.addAdditionalInfo("context", context);
-            publisher.publishEvent(event);
+            publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(),
+                    AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
         });
 
         return result;
@@ -357,10 +355,8 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
         result.getResult().getLeft().getMemberships().stream().map(MembershipUR::getGroup).distinct().
                 map(groupDAO::findById).flatMap(Optional::stream).
                 forEach(group -> {
-            EntityLifecycleEvent<? extends Group> event =
-                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain());
-            event.addAdditionalInfo("context", context);
-            publisher.publishEvent(event);
+            publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group,
+                    AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
         });
 
         return result;
@@ -453,10 +449,8 @@ public abstract class AbstractUserWorkflowAdapter extends AbstractWorkflowAdapte
 
         // finally publish events for all groups affected by this operation, via membership
         groups.forEach(group -> {
-            EntityLifecycleEvent<Group> event =
-                    new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain());
-            event.addAdditionalInfo("context", context);
-            publisher.publishEvent(event);
+            publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group,
+                    AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
         });
     }
 }

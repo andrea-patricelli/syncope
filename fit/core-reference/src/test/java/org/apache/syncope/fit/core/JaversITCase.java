@@ -33,6 +33,8 @@ import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.SyncopeClientException;
 import org.apache.syncope.common.lib.SyncopeConstants;
 import org.apache.syncope.common.lib.request.AttrPatch;
+import org.apache.syncope.common.lib.request.GroupCR;
+import org.apache.syncope.common.lib.request.GroupUR;
 import org.apache.syncope.common.lib.request.LinkedAccountUR;
 import org.apache.syncope.common.lib.request.MembershipUR;
 import org.apache.syncope.common.lib.request.PasswordPatch;
@@ -640,6 +642,55 @@ public class JaversITCase extends AbstractITCase {
                 .get()
                 .getValues()
                 .containsAll(userTO.getPlainAttr("email").orElseThrow().getValues()));
+    }
+
+    @Test
+    public void crudGroupEvents() {
+        // create a new relationship type to relate group and any objects
+        RelationshipTypeTO relationshipType = new RelationshipTypeTO();
+        relationshipType.setKey("grp_inclusion");
+        relationshipType.setDescription("grp_inclusion");
+        relationshipType.setLeftEndAnyType(AnyTypeKind.GROUP.name());
+        relationshipType.setRightEndAnyType("PRINTER");
+        RELATIONSHIP_TYPE_SERVICE.create(relationshipType);
+
+        GroupCR groupCR = GroupITCase.getSample("javersGrp01");
+        groupCR.getResources().add(RESOURCE_NAME_NOPROPAGATION);
+        groupCR.getAuxClasses().add("other");
+        TypeExtensionTO userTE = new TypeExtensionTO();
+        userTE.setAnyType(AnyTypeKind.USER.name());
+        userTE.getAuxClasses().add("csv");
+        userTE.getAuxClasses().add("generic membership");
+        groupCR.getTypeExtensions().add(userTE);
+        groupCR.getRelationships().add(new RelationshipTO.Builder("grp_inclusion").otherEnd(HP_PRINTER_KEY).build());
+
+        // set user manager bellini
+        groupCR.setUManager(BELLINI_KEY);
+
+        GroupTO groupTO = createGroup(groupCR).getEntity();
+
+        String groupKey = groupTO.getKey();
+
+        // first update: change name and attributes
+        groupCR.getTypeExtensions().add(userTE);
+        GroupUR groupUR = new GroupUR.Builder(groupKey).name(
+                        new StringReplacePatchItem.Builder().value(groupTO.getName() + "_upd").build())
+                .plainAttrs(attrAddReplacePatch("originalName", groupTO.getName()),
+                        attrAddReplacePatch("icon", "anotherIcon"))
+                .build();
+        groupTO = updateGroup(groupUR).getEntity();
+
+        // second update: change manager and type extensions
+        TypeExtensionTO printerTE = new TypeExtensionTO();
+        printerTE.setAnyType("PRINTER");
+        printerTE.getAuxClasses().add("minimal printer");
+        groupCR.setUManager(PUCCINI_KEY);
+        groupTO = updateGroup(groupUR).getEntity();
+
+        // 1. search and test shadows
+        PagedResult<ShadowTO<GroupTO>> shadows = JAVERS_AUDIT_GROUP_SERVICE.shadows(groupKey, 1, 25);
+        assertTrue(shadows.getTotalCount() >= 3); // TODO rimuovere prima della pr
+
     }
 
 }

@@ -181,33 +181,33 @@ public class JaversAuditEventDAOTest {
     public void searchForGroupSnapshots() {
         GroupTO group01 = new GroupTO();
         group01.setKey(UUID.randomUUID().toString());
-        group01.setName("testgroup");
+        group01.setName("testgrp");
 
         List<Shadow<GroupTO>> shadows0To100 = generateGroupShadows(group01, 0, 100);
-        List<Shadow<GroupTO>> shadows100To200 = generateUserShadows(group01, 100, 190);
+        List<Shadow<GroupTO>> shadows100To200 = generateGroupShadows(group01, 100, 190);
 
         when(javers.findShadowsAndStream(ArgumentMatchers.any(JqlQuery.class))).thenAnswer(ic -> shadows0To100.stream())
                 .thenAnswer(ic -> shadows100To200.stream());
 
         // first page
-        Page<ShadowTO<UserTO>> events0To100 =
-                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(0, 100), UserTO.class);
+        Page<ShadowTO<GroupTO>> events0To100 =
+                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(0, 100), GroupTO.class);
         assertEquals(100, events0To100.getTotalElements());
         assertTrue(events0To100.getContent()
                 .getFirst()
                 .getWhen()
                 .truncatedTo(ChronoUnit.HOURS)
                 .isEqual(OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS)));
-        assertEquals("admin_of_testuser_v0", events0To100.getContent().getFirst().getWho());
-        assertEquals("testuser_v0", events0To100.getContent().getFirst().getAnyTO().getUsername());
-        assertEquals("testuser_v11", events0To100.getContent().get(11).getAnyTO().getUsername());
+        assertEquals("admin_of_testgrp_v0", events0To100.getContent().getFirst().getWho());
+        assertEquals("testgrp_v0", events0To100.getContent().getFirst().getAnyTO().getName());
+        assertEquals("testgrp_v11", events0To100.getContent().get(11).getAnyTO().getName());
         // second page
-        Page<ShadowTO<UserTO>> events100To200 =
-                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(1, 100), UserTO.class);
+        Page<ShadowTO<GroupTO>> events100To200 =
+                auditEventDAO.searchForShadows(group01.getKey(), null, null, PageRequest.of(1, 100), GroupTO.class);
         assertEquals(90, events100To200.getTotalElements());
-        assertEquals("testuser_v185", events100To200.getContent().get(85).getAnyTO().getUsername());
+        assertEquals("testgrp_v185", events100To200.getContent().get(85).getAnyTO().getName());
     }
-    
+
     private List<Shadow<UserTO>> generateUserShadows(final UserTO user01, final int start, final int end) {
         List<Shadow<UserTO>> shadows = new ArrayList<>();
         for (int i = start; i < end; i++) {
@@ -265,6 +265,31 @@ public class JaversAuditEventDAOTest {
 
         when(mockChanges.groupByCommit()).thenReturn(changesByCommitList);
         return mockChanges;
+    }
+
+    private List<Shadow<GroupTO>> generateGroupShadows(final GroupTO grp, final int start, final int end) {
+        List<Shadow<GroupTO>> shadows = new ArrayList<>();
+        for (int i = start; i < end; i++) {
+            GroupTO grpVersion = new GroupTO();
+            grpVersion.setKey(grp.getKey());
+            grpVersion.setName("testgrp_v" + i);
+            Shadow mockShadow = mock(Shadow.class);
+            when(mockShadow.get()).thenReturn(grpVersion);
+            CdoSnapshot snapshot = mock(CdoSnapshot.class);
+            GlobalId globalId = mock(GlobalId.class);
+            when(globalId.value()).thenReturn(UUID.randomUUID().toString());
+            when(snapshot.getGlobalId()).thenReturn(globalId);
+            SnapshotType snapshotType = mock(SnapshotType.class);
+            when(snapshot.getType()).thenReturn(snapshotType);
+            when(snapshotType.name()).thenReturn(GroupTO.class.getSimpleName());
+            when(mockShadow.getCdoSnapshot()).thenReturn(snapshot);
+            shadows.add(mockShadow);
+            CommitMetadata commitMetadata = Mockito.mock(CommitMetadata.class);
+            when(commitMetadata.getCommitDate()).thenReturn(LocalDateTime.now());
+            when(commitMetadata.getAuthor()).thenReturn("admin_of_" + grpVersion.getName());
+            when(mockShadow.getCommitMetadata()).thenReturn(commitMetadata);
+        }
+        return shadows;
     }
 
     private PropertyChange createPropertyChange(

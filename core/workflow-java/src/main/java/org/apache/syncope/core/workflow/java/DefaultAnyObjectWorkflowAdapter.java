@@ -57,8 +57,8 @@ public class DefaultAnyObjectWorkflowAdapter extends AbstractAnyObjectWorkflowAd
         metadata(anyObject, creator, context);
         anyObject = anyObjectDAO.save(anyObject);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, anyObject, AuthContextUtils.getDomain()));
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, anyObject,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         PropagationByResource<String> propByRes = new PropagationByResource<>();
         propByRes.set(ResourceOperation.CREATE, anyObjectDAO.findAllResourceKeys(anyObject.getKey()));
@@ -74,8 +74,8 @@ public class DefaultAnyObjectWorkflowAdapter extends AbstractAnyObjectWorkflowAd
         metadata(anyObject, updater, context);
         AnyObject updated = anyObjectDAO.save(anyObject);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new WorkflowResult<>(anyObjectUR, propByRes, "update");
     }
@@ -84,7 +84,7 @@ public class DefaultAnyObjectWorkflowAdapter extends AbstractAnyObjectWorkflowAd
     protected void doDelete(final AnyObject anyObject, final String eraser, final String context) {
         anyObjectDAO.delete(anyObject);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, anyObject, AuthContextUtils.getDomain()));
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, anyObject,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
     }
 }

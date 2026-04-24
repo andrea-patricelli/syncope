@@ -132,10 +132,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         user.setStatus(status);
         user = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, user, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.CREATE, user,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         PropagationByResource<String> propByRes = new PropagationByResource<>();
         propByRes.set(ResourceOperation.CREATE, userDAO.findAllResourceKeys(user.getKey()));
@@ -164,10 +162,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         user.setStatus("active");
         User updated = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new UserWorkflowResult<>(updated.getKey(), null, "activate");
     }
@@ -183,10 +179,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         metadata(user, updater, context);
         User updated = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new UserWorkflowResult<>(
                 Pair.of(userUR, !user.isSuspended()),
@@ -200,10 +194,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         user.setStatus("suspended");
         User updated = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new UserWorkflowResult<>(updated.getKey(), null, "suspend");
     }
@@ -214,10 +206,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         user.setStatus("active");
         User updated = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new UserWorkflowResult<>(updated.getKey(), null, "reactivate");
     }
@@ -242,10 +232,8 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
         metadata(user, updater, context);
         User updated = userDAO.save(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
     }
 
     @Override
@@ -282,9 +270,7 @@ public class DefaultUserWorkflowAdapter extends AbstractUserWorkflowAdapter {
     protected void doDelete(final User user, final String eraser, final String context) {
         userDAO.delete(user);
 
-        EntityLifecycleEvent<User> event =
-                new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, user, AuthContextUtils.getDomain());
-        event.addAdditionalInfo("context", context);
-        publisher.publishEvent(event);
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, user,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
     }
 }

@@ -70,8 +70,8 @@ public class DefaultGroupWorkflowAdapter extends AbstractGroupWorkflowAdapter {
         metadata(group, updater, context);
         Group updated = groupDAO.save(group);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated, AuthContextUtils.getDomain()));
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, updated,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
 
         return new WorkflowResult<>(groupUR, propByRes, "update");
     }
@@ -80,7 +80,7 @@ public class DefaultGroupWorkflowAdapter extends AbstractGroupWorkflowAdapter {
     protected void doDelete(final Group group, final String eraser, final String context) {
         groupDAO.delete(group);
 
-        publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, group, AuthContextUtils.getDomain()));
+        publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.DELETE, group,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context));
     }
 }

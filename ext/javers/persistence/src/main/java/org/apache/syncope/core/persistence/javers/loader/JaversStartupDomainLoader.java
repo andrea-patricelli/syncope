@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.syncope.common.keymaster.client.api.DomainOps;
 import org.apache.syncope.common.keymaster.client.api.model.Domain;
 import org.apache.syncope.common.keymaster.client.api.model.JPADomain;
+import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.core.persistence.api.DomainHolder;
 import org.apache.syncope.core.persistence.api.SyncopeCoreLoader;
@@ -131,6 +132,11 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
                                 .withIdPropertyName("key")
                                 .withIgnoredProperties(
                                         List.of("token", "password", "tokenExpireTime", "securityAnswer"))
+                                .build())
+                        .registerEntity(EntityDefinitionBuilder.entityDefinition(GroupTO.class)
+                                .withIdPropertyName("key")
+                                .withIgnoredProperties(
+                                        List.of("userMembershipCount", "anyObjectMembershipCount"))
                                 .build())
                         .registerIgnoredClassesStrategy(c -> c.getName().startsWith("org.apache.syncope"))
                         .build()).getBeanDefinition());

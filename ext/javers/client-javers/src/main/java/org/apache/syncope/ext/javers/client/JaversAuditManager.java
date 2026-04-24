@@ -1,7 +1,9 @@
 package org.apache.syncope.ext.javers.client;
 
+import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.core.persistence.api.entity.Entity;
+import org.apache.syncope.core.persistence.api.entity.group.Group;
 import org.apache.syncope.core.persistence.api.entity.user.User;
 import org.apache.syncope.core.provisioning.api.data.AnyObjectDataBinder;
 import org.apache.syncope.core.provisioning.api.data.GroupDataBinder;
@@ -23,7 +25,7 @@ public class JaversAuditManager {
     protected final JaversDomainLocator javersDomainLocator;
 
     private final UserDataBinder userDataBinder;
-
+    
     private final GroupDataBinder groupDataBinder;
 
     private final AnyObjectDataBinder anyObjectDataBinder;
@@ -52,6 +54,19 @@ public class JaversAuditManager {
                 LOG.debug("About to commit CREATE_OR_UPDATE event on user {} with additional infos {}",
                         userTO.getUsername(), event.getAdditionalInfos());
                 javers.commit(AuthContextUtils.getUsername(), userTO, event.getAdditionalInfos());
+            } else if (event.getType() == SyncDeltaType.DELETE) {
+                LOG.debug("About to commit DELETE event on user {} with additional infos {}",
+                        ((User) event.getEntity()).getUsername(), event.getAdditionalInfos());
+                javers.commitShallowDeleteById(AuthContextUtils.getUsername(),
+                        InstanceIdDTO.instanceId(event.getEntity().getKey(), UserTO.class), event.getAdditionalInfos());
+            }
+        } else if (event.getEntity() instanceof Group){
+            if (event.getType() == SyncDeltaType.CREATE_OR_UPDATE || event.getType() == SyncDeltaType.CREATE
+                    || event.getType() == SyncDeltaType.UPDATE) {
+                GroupTO groupTO = groupDataBinder.getGroupTO((Group) event.getEntity(), true);
+                LOG.debug("About to commit CREATE_OR_UPDATE event on group {} with additional infos {}",
+                        groupTO.getName(), event.getAdditionalInfos());
+                javers.commit(AuthContextUtils.getUsername(), groupTO, event.getAdditionalInfos());
             } else if (event.getType() == SyncDeltaType.DELETE) {
                 LOG.debug("About to commit DELETE event on user {} with additional infos {}",
                         ((User) event.getEntity()).getUsername(), event.getAdditionalInfos());

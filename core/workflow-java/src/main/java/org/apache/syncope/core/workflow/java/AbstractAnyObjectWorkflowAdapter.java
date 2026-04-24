@@ -78,7 +78,8 @@ public abstract class AbstractAnyObjectWorkflowAdapter
 
         // finally publish events for all groups affected by this operation, via membership
         anyObject.getMemberships().forEach(m -> publisher.publishEvent(
-                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(), AuthContextUtils.getDomain())));
+                new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, m.getRightEnd(),
+                        AuthContextUtils.getDomain()).addAdditionalInfo("context", context)));
 
         return result;
     }
@@ -111,8 +112,8 @@ public abstract class AbstractAnyObjectWorkflowAdapter
         // finally publish events for all groups affected by this operation, via membership
         result.getResult().getMemberships().stream().map(MembershipUR::getGroup).distinct().
                 map(groupDAO::findById).flatMap(Optional::stream).
-                forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(
-                this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain())));
+                forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context)));
 
         return result;
     }
@@ -129,7 +130,7 @@ public abstract class AbstractAnyObjectWorkflowAdapter
         doDelete(anyObject, eraser, context);
 
         // finally publish events for all groups affected by this operation, via membership
-        groups.forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(
-                this, SyncDeltaType.UPDATE, group, AuthContextUtils.getDomain())));
+        groups.forEach(group -> publisher.publishEvent(new EntityLifecycleEvent<>(this, SyncDeltaType.UPDATE, group,
+                AuthContextUtils.getDomain()).addAdditionalInfo("context", context)));
     }
 }
