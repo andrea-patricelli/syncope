@@ -1,3 +1,21 @@
+/*
+ * Licensed to the Apache Software Foundation (ASF) under one
+ * or more contributor license agreements.  See the NOTICE file
+ * distributed with this work for additional information
+ * regarding copyright ownership.  The ASF licenses this file
+ * to you under the Apache License, Version 2.0 (the
+ * "License"); you may not use this file except in compliance
+ * with the License.  You may obtain a copy of the License at
+ *
+ *   http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing,
+ * software distributed under the License is distributed on an
+ * "AS IS" BASIS, WITHOUT WARRANTIES OR CONDITIONS OF ANY
+ * KIND, either express or implied.  See the License for the
+ * specific language governing permissions and limitations
+ * under the License.
+ */
 package org.apache.syncope.core.persistence.javers.dao;
 
 import java.time.OffsetDateTime;
@@ -18,6 +36,7 @@ import org.apache.syncope.common.lib.to.MembershipTO;
 import org.apache.syncope.common.lib.to.PropertyChangeTO;
 import org.apache.syncope.common.lib.to.RelationshipTO;
 import org.apache.syncope.common.lib.to.ShadowTO;
+import org.apache.syncope.common.lib.to.TypeExtensionTO;
 import org.apache.syncope.core.persistence.api.search.SyncopePage;
 import org.apache.syncope.core.spring.security.AuthContextUtils;
 import org.apache.syncope.ext.javers.client.util.JaversDomainLocator;
@@ -110,13 +129,16 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                 .valueChanges(changes.get()
                                         .stream()
                                         .filter(change -> change instanceof PropertyChange<?>)
-                                        .flatMap(change -> processChange(javers, change).stream())
+                                        .flatMap(change -> processChange(javers, change, clazz).stream())
                                         .toList())
                                 .build()).build())
                 .toList();
     }
 
-    protected List<PropertyChangeTO> processChange(final Javers javers, final Change change) {
+    protected <T extends AnyTO> List<PropertyChangeTO> processChange(
+            final Javers javers,
+            final Change change,
+            final Class<T> clazz) {
         List<PropertyChangeTO> propertyChangeTOs = new ArrayList<>();
 
         if (change instanceof PropertyChange<?>) {
@@ -138,7 +160,6 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                 } else if (propertyChange instanceof CollectionChange<?>) {
                     switch (propertyChange.getPropertyName()) {
                         case "memberships":
-
                             List<MembershipTO> oldMembs = ((CollectionChange<?>) propertyChange).getLeft()
                                     .stream()
                                     .map(MembershipTO.class::cast)
@@ -316,8 +337,7 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                                         .forEach(pc -> plainAttrsDiff((CollectionChange<?>) pc,
                                                                 propertyChangeTOs,
                                                                 propertyChange.getAffectedGlobalId().value(),
-                                                                "linkedAccounts[" 
-                                                                        + newLinkedAccount.getConnObjectKeyValue()
+                                                                "linkedAccounts[" + newLinkedAccount.getConnObjectKeyValue()
                                                                         + "," + newLinkedAccount.getResource() + "].")),
                                                 () -> newLinkedAccount.getPlainAttrs().forEach(mpa -> {
                                                     PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();
@@ -376,9 +396,37 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                             .map(Object::toString)
                                             .toList());
                             propertyChangeTOs.add(propertyChangeTO);
+                            break;
+                        // GroupTO properties
+                        case "typeExtensions":
+                            List<TypeExtensionTO> oldTypeExtensions = ((CollectionChange<?>) propertyChange).getLeft()
+                                    .stream()
+                                    .map(TypeExtensionTO.class::cast)
+                                    .toList();
+                            List<TypeExtensionTO> newTypeExtensions = ((CollectionChange<?>) propertyChange).getRight()
+                                    .stream()
+                                    .map(TypeExtensionTO.class::cast)
+                                    .toList();
+                            propertyChangeTO.getOldValues()
+                                    .addAll(oldTypeExtensions.stream()
+                                            .map(te -> "typeExtensions[" + te.getAnyType() + "].auxClasses["
+                                                    + String.join(",", te.getAuxClasses()) + "]")
+                                            .toList());
+                            if (PropertyChangeType.PROPERTY_ADDED == propertyChange.getChangeType()
+                                    || PropertyChangeType.PROPERTY_VALUE_CHANGED == propertyChange.getChangeType()) {
+                                propertyChangeTO.getNewValues()
+                                        .addAll(newTypeExtensions.stream()
+                                                .map(te -> "typeExtensions[" + te.getAnyType() + "].auxClasses["
+                                                        + String.join(",", te.getAuxClasses()) + "]")
+                                                .toList());
+                            }
+                            if (!propertyChangeTO.isEmpty()) {
+                                propertyChangeTOs.add(propertyChangeTO);
+                            }
+                            break;
                         default:
-                            LOG.warn("Unexpected UserTO property: {} unable to get changes",
-                                    propertyChange.getPropertyName());
+                            LOG.warn("Unexpected property for class [{}] [{}] unable to compute changes on it",
+                                    clazz.getSimpleName(), propertyChange.getPropertyName());
                             break;
                     }
                 }

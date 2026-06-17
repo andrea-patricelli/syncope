@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
@@ -26,15 +27,23 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.syncope.common.lib.SyncopeConstants;
+import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
+import org.apache.syncope.common.lib.types.AnyTypeKind;
 import org.apache.syncope.common.lib.types.CipherAlgorithm;
+import org.apache.syncope.core.persistence.api.dao.AnyObjectDAO;
+import org.apache.syncope.core.persistence.api.dao.AnyTypeDAO;
 import org.apache.syncope.core.persistence.api.dao.GroupDAO;
 import org.apache.syncope.core.persistence.api.dao.RealmDAO;
 import org.apache.syncope.core.persistence.api.dao.UserDAO;
+import org.apache.syncope.core.persistence.api.entity.AnyType;
 import org.apache.syncope.core.persistence.api.entity.EntityFactory;
+import org.apache.syncope.core.persistence.api.entity.anyobject.AnyObject;
+import org.apache.syncope.core.persistence.api.entity.group.Group;
 import org.apache.syncope.core.persistence.api.entity.user.UMembership;
 import org.apache.syncope.core.persistence.api.entity.user.User;
 import org.apache.syncope.core.provisioning.api.event.EntityLifecycleEvent;
+import org.apache.syncope.core.workflow.api.GroupWorkflowAdapter;
 import org.apache.syncope.core.workflow.api.UserWorkflowAdapter;
 import org.apache.syncope.ext.javers.client.JaversAuditManager;
 import org.identityconnectors.framework.common.objects.SyncDeltaType;
@@ -73,6 +82,12 @@ public class JaversAuditManagerTest extends AbstractTest {
     private GroupDAO groupDAO;
 
     @Autowired
+    private AnyObjectDAO anyObjectDAO;
+
+    @Autowired
+    private AnyTypeDAO anyTypeDAO;
+
+    @Autowired
     private Javers javers;
 
     @Autowired
@@ -80,6 +95,34 @@ public class JaversAuditManagerTest extends AbstractTest {
 
     @Test
     public void userCRUD() {
+        // create sample any object employee
+        AnyType printerAnyType = entityFactory.newEntity(AnyType.class);
+        printerAnyType.setKind(AnyTypeKind.ANY_OBJECT);
+        printerAnyType.setKey("PRINTER");
+        printerAnyType = anyTypeDAO.save(printerAnyType);
+        assertNotNull(printerAnyType);
+
+        AnyObject printer01 = entityFactory.newEntity(AnyObject.class);
+        printer01.setName("printer01");
+        printer01.setRealm(realmDAO.getRoot());
+        printer01.setCreator("admin");
+        printer01.setCreationDate(OffsetDateTime.now());
+
+        printer01.setType(printerAnyType);
+        printer01.setRealm(realmDAO.getRoot());
+
+        printer01 = anyObjectDAO.save(printer01);
+        assertNotNull(printer01);
+
+        // create sample group employee
+        Group employee = entityFactory.newEntity(Group.class);
+        employee.setName("employee");
+        employee.setRealm(realmDAO.getRoot());
+        employee.setCreator("admin");
+        employee.setCreationDate(OffsetDateTime.now());
+
+        employee = groupDAO.save(employee);
+        assertNotNull(employee);
         // 1. create user
         User user01 = entityFactory.newEntity(User.class);
         user01.setUsername("test.javers" + RandomStringUtils.secure().nextNumeric(4) + "@syncope.apache.org");
@@ -117,18 +160,18 @@ public class JaversAuditManagerTest extends AbstractTest {
 
         entityManager.flush();
 
-        // evento su user01
+        // sample event on user01
         javersAuditManager.entity(
                 new EntityLifecycleEvent<>(Mockito.mock(UserWorkflowAdapter.class), SyncDeltaType.CREATE_OR_UPDATE,
                         user01, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", "somecontext")
                         .addAdditionalInfo("category", "somecategory")
                         .addAdditionalInfo("subcategory", "somesubcategory"));
-        // evento su user02
+        // sample event on user02
         javersAuditManager.entity(
                 new EntityLifecycleEvent<>(Mockito.mock(UserWorkflowAdapter.class), SyncDeltaType.CREATE_OR_UPDATE,
                         user02, SyncopeConstants.MASTER_DOMAIN));
 
-        // evento DELETE su user02
+        // sample event DELETE on user02
         javersAuditManager.entity(
                 new EntityLifecycleEvent<>(Mockito.mock(UserWorkflowAdapter.class), SyncDeltaType.DELETE, user02,
                         SyncopeConstants.MASTER_DOMAIN));
@@ -148,6 +191,45 @@ public class JaversAuditManagerTest extends AbstractTest {
         Changes changesUser02 = javers.findChanges(QueryBuilder.byInstanceId(user02.getKey(), UserTO.class).build());
         assertFalse(changesUser02.groupByObject().isEmpty());
         assertEquals(2, changesUser02.groupByCommit().size());
+
+        // sample event on group employee
+        javersAuditManager.entity(
+                new EntityLifecycleEvent<>(Mockito.mock(GroupWorkflowAdapter.class), SyncDeltaType.CREATE_OR_UPDATE,
+                        employee, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", "someGrpcontext")
+                        .addAdditionalInfo("category", "someGrpcategory")
+                        .addAdditionalInfo("subcategory", "someGrpsubcategory"));
+
+        List<Shadow<GroupTO>> shadowsEmployee =
+                javers.findShadows(QueryBuilder.byInstanceId(employee.getKey(), GroupTO.class).build());
+        assertFalse(shadowsEmployee.isEmpty());
+        assertEquals("someGrpcontext", shadowsEmployee.getFirst().getCommitMetadata().getProperties().get("context"));
+        assertEquals("someGrpcategory", shadowsEmployee.getFirst().getCommitMetadata().getProperties().get("category"));
+        assertEquals("someGrpsubcategory",
+                shadowsEmployee.getFirst().getCommitMetadata().getProperties().get("subcategory"));
+
+        Changes changesEmployee =
+                javers.findChanges(QueryBuilder.byInstanceId(employee.getKey(), GroupTO.class).build());
+        assertFalse(changesEmployee.groupByCommit().isEmpty());
+        assertEquals(1, changesEmployee.groupByCommit().size());
+
+        // sample event on any object employee
+        //        javersAuditManager.entity(
+        //                new EntityLifecycleEvent<>(Mockito.mock(AnyObjectWorkflowAdapter.class), SyncDeltaType
+        //                .CREATE_OR_UPDATE,
+        //                        employee, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", 
+        //                        "someAnyObjcontext")
+        //                        .addAdditionalInfo("category", "someAnyObjcategory")
+        //                        .addAdditionalInfo("subcategory", "someAnyObjsubcategory"));
+        //
+        //        List<Shadow<GroupTO>> shadowsPrinter01 =
+        //                javers.findShadows(QueryBuilder.byInstanceId(printer01.getKey(), AnyObjectTO.class).build());
+        //        assertFalse(shadowsPrinter01.isEmpty());
+        //        assertEquals("someAnyObjcontext", shadowsPrinter01.getFirst().getCommitMetadata().getProperties()
+        //        .get("context"));
+        //        assertEquals("someAnyObjcategory", shadowsPrinter01.getFirst().getCommitMetadata().getProperties()
+        //        .get("category"));
+        //        assertEquals("someAnyObjsubcategory",
+        //                shadowsPrinter01.getFirst().getCommitMetadata().getProperties().get("subcategory"));
     }
 
 }

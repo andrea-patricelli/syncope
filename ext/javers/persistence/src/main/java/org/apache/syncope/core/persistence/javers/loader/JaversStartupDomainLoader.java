@@ -130,13 +130,13 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(UserTO.class)
                                 .withIdPropertyName("key")
-                                .withIgnoredProperties(
-                                        List.of("token", "password", "tokenExpireTime", "securityAnswer"))
+                                .withIgnoredProperties(List.of("token", "password", "tokenExpireTime", "securityAnswer",
+                                        "lastChangeDate"))
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(GroupTO.class)
                                 .withIdPropertyName("key")
                                 .withIgnoredProperties(
-                                        List.of("userMembershipCount", "anyObjectMembershipCount"))
+                                        List.of("userMembershipCount", "anyObjectMembershipCount", "lastChangeDate"))
                                 .build())
                         .registerIgnoredClassesStrategy(c -> c.getName().startsWith("org.apache.syncope"))
                         .build()).getBeanDefinition());

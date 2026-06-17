@@ -18,7 +18,31 @@
  */
 package org.apache.syncope.common.rest.api.service;
 
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.security.SecurityRequirements;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.ws.rs.Path;
+import java.time.OffsetDateTime;
+import java.util.List;
 import org.apache.syncope.common.lib.to.AnyObjectTO;
+import org.apache.syncope.common.lib.to.ChangesByCommitTO;
+import org.apache.syncope.common.lib.to.PagedResult;
+import org.apache.syncope.common.lib.to.ShadowTO;
 
+@Tag(name = "JaversAnyObjects")
+@SecurityRequirements({ @SecurityRequirement(name = "BasicAuthentication"), @SecurityRequirement(name = "Bearer") })
+@Path("javersAnyObjects")
 public interface JaversAuditAnyObjectService extends JaversAuditService<AnyObjectTO> {
+
+    @Override
+    PagedResult<ShadowTO<AnyObjectTO>> shadows(String key, int page, int size);
+
+    @Override
+    List<ChangesByCommitTO> changes(
+            String key,
+            String author,
+            OffsetDateTime from,
+            OffsetDateTime to,
+            int page,
+            int size);
 }

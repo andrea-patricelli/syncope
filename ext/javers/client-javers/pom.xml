@@ -69,18 +69,7 @@ under the License.
       <version>${javers.version}</version>
     </dependency>
 
-      <!-- TEST -->
-      <dependency>
-      <groupId>org.springframework.boot</groupId>
-      <artifactId>spring-boot-starter-validation</artifactId>
-      <scope>test</scope>
-    </dependency>
-    <dependency>
-      <groupId>org.apache.syncope.core</groupId>
-      <artifactId>syncope-core-persistence-jpa</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
+    <!-- TEST -->
     <dependency>
       <groupId>org.postgresql</groupId>
       <artifactId>postgresql</artifactId>
@@ -111,18 +100,6 @@ under the License.
       <artifactId>junit-jupiter</artifactId>
       <scope>test</scope>
     </dependency>
-    <dependency>
-      <groupId>org.apache.syncope.core</groupId>
-      <artifactId>syncope-core-workflow-java</artifactId>
-      <version>${project.version}</version>
-      <scope>test</scope>
-    </dependency>
-      <dependency>
-        <groupId>org.apache.syncope.core</groupId>
-        <artifactId>syncope-core-provisioning-java</artifactId>
-        <version>${project.version}</version>
-        <scope>test</scope>
-      </dependency>  
   </dependencies>
 
   <build>

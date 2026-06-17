@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
 
 import static org.mockito.Mockito.mock;
 
@@ -24,6 +25,7 @@ import org.apache.syncope.common.keymaster.client.api.DomainOps;
 import org.apache.syncope.common.keymaster.client.api.model.JPADomain;
 import org.apache.syncope.core.persistence.api.DomainRegistry;
 import org.apache.syncope.core.persistence.api.content.ContentLoader;
+import org.apache.syncope.core.persistence.javers.loader.JaversStartupDomainLoader;
 import org.apache.syncope.core.persistence.jpa.MariaDBPersistenceContext;
 import org.apache.syncope.core.persistence.jpa.MySQLPersistenceContext;
 import org.apache.syncope.core.persistence.jpa.OraclePersistenceContext;
@@ -39,10 +41,8 @@ import org.springframework.context.ConfigurableApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Import;
-import org.springframework.context.annotation.PropertySource;
 import org.springframework.mail.javamail.JavaMailSender;
 
-@PropertySource("classpath:core-test.properties")
 @Import({ ProvisioningContext.class, WorkflowContext.class, SecurityContext.class, PersistenceContext.class,
         PGPersistenceContext.class, MySQLPersistenceContext.class, MariaDBPersistenceContext.class,
         OraclePersistenceContext.class })
@@ -52,17 +52,18 @@ public class JaversTestContext {
     @Bean
     public TestInitializer testInitializer(
             final StartupDomainLoader domainLoader,
+            final JaversStartupDomainLoader javersDomainLoader,
             final ContentLoader contentLoader,
             final ConfigurableApplicationContext ctx) {
 
-        return new TestInitializer(domainLoader, contentLoader, ctx);
+        return new TestInitializer(domainLoader, javersDomainLoader, contentLoader, ctx);
     }
 
     @Bean
     public JavaMailSender javaMailSender() {
         return mock(JavaMailSender.class);
     }
-    
+
     @Bean
     public ImplementationLookup implementationLookup() {
         return new DummyImplementationLookup();

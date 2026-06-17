@@ -661,7 +661,6 @@ public class JaversITCase extends AbstractITCase {
         userTE.setAnyType(AnyTypeKind.USER.name());
         userTE.getAuxClasses().add("csv");
         userTE.getAuxClasses().add("generic membership");
-        groupCR.getTypeExtensions().add(userTE);
         groupCR.getRelationships().add(new RelationshipTO.Builder("grp_inclusion").otherEnd(HP_PRINTER_KEY).build());
 
         // set user manager bellini
@@ -672,25 +671,69 @@ public class JaversITCase extends AbstractITCase {
         String groupKey = groupTO.getKey();
 
         // first update: change name and attributes
+        String orginalName = groupTO.getName();
         groupCR.getTypeExtensions().add(userTE);
-        GroupUR groupUR = new GroupUR.Builder(groupKey).name(
-                        new StringReplacePatchItem.Builder().value(groupTO.getName() + "_upd").build())
-                .plainAttrs(attrAddReplacePatch("originalName", groupTO.getName()),
+        updateGroup(new GroupUR.Builder(groupKey).name(
+                        new StringReplacePatchItem.Builder().value(orginalName + "_upd").build())
+                .plainAttrs(attrAddReplacePatch("originalName", orginalName),
                         attrAddReplacePatch("icon", "anotherIcon"))
-                .build();
-        groupTO = updateGroup(groupUR).getEntity();
+                .typeExtension(userTE)
+                .build());
 
-        // second update: change manager and type extensions
+        // second update: change manager and type extensions replacing the USER with PRINTER one
         TypeExtensionTO printerTE = new TypeExtensionTO();
         printerTE.setAnyType("PRINTER");
         printerTE.getAuxClasses().add("minimal printer");
-        groupCR.setUManager(PUCCINI_KEY);
-        groupTO = updateGroup(groupUR).getEntity();
+        groupTO = updateGroup(
+                new GroupUR.Builder(groupKey).uManager(new StringReplacePatchItem.Builder().value(PUCCINI_KEY).build())
+                        .typeExtensions(List.of(userTE, printerTE))
+                        .build()).getEntity();
 
         // 1. search and test shadows
         PagedResult<ShadowTO<GroupTO>> shadows = JAVERS_AUDIT_GROUP_SERVICE.shadows(groupKey, 1, 25);
-        assertTrue(shadows.getTotalCount() >= 3); // TODO rimuovere prima della pr
+        assertEquals(3, shadows.getTotalCount());
 
+        // 2. search changes by entity key
+        List<ChangesByCommitTO> changes = JAVERS_AUDIT_GROUP_SERVICE.changes(groupKey, "admin", null, null, 1, 25);
+        assertFalse(changes.isEmpty());
+        // changes in uManager
+        assertTrue(changes.stream()
+                .anyMatch(pc -> pc.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "uManager".equals(vc.getField()) && vc.getOldValues().contains(BELLINI_KEY)
+                                && vc.getNewValues().contains(PUCCINI_KEY))));
+        // changes key must match the group key
+        assertTrue(changes.stream()
+                .allMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .allMatch(vc -> vc.getEntityKey().contains(groupKey))));
+
+        // changes in name
+        String newName = groupTO.getName();
+        assertTrue(changes.stream()
+                .anyMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "name".equals(vc.getField()) && vc.getNewValues().contains(newName)
+                                && vc.getOldValues().contains(orginalName))));
+        // changes in name
+        assertTrue(changes.stream()
+                .anyMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "typeExtensions".equals(vc.getField()) && vc.getOldValues().isEmpty()
+                                && vc.getNewValues()
+                                .contains("typeExtensions[USER].auxClasses[csv,generic membership]"))));
+        assertTrue(changes.stream()
+                .anyMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "typeExtensions".equals(vc.getField()) && vc.getNewValues()
+                                .contains("typeExtensions[PRINTER].auxClasses[minimal printer]")
+                                && vc.getOldValues()
+                                .contains("typeExtensions[USER].auxClasses[csv,generic membership]"))));
     }
 
 }

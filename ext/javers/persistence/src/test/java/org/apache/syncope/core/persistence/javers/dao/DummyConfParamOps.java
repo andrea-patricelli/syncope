@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
 
 import java.util.Map;
 import org.apache.syncope.common.keymaster.client.api.ConfParamOps;

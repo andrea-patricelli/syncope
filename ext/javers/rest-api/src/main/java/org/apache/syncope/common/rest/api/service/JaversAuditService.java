@@ -18,9 +18,6 @@
  */
 package org.apache.syncope.common.rest.api.service;
 
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.security.SecurityRequirements;
-import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
 import jakarta.ws.rs.DefaultValue;
@@ -40,11 +37,6 @@ import org.apache.syncope.common.lib.to.ShadowTO;
 /**
  * REST operations for audit.
  */
-@Tag(name = "JaversAudit")
-@SecurityRequirements({
-    @SecurityRequirement(name = "BasicAuthentication"),
-    @SecurityRequirement(name = "Bearer") })
-@Path("javers-audit")
 public interface JaversAuditService<TO extends AnyTO> extends JAXRSService {
 
     /**

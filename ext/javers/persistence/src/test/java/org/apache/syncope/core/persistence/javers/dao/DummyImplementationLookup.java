@@ -16,6 +16,7 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
 
 import java.util.Set;
 import org.apache.syncope.common.lib.policy.AccountRuleConf;

@@ -16,18 +16,24 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
+
 import static org.junit.jupiter.api.Assertions.fail;
 
 import io.zonky.test.db.postgres.embedded.EmbeddedPostgres;
 import java.util.function.Supplier;
+import org.apache.syncope.core.persistence.javers.JaversPersistenceContext;
 import org.apache.syncope.core.persistence.jpa.MasterDomain;
 import org.apache.syncope.ext.javers.client.JaversClientContext;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.test.context.TestPropertySource;
 import org.springframework.test.context.junit.jupiter.SpringJUnitConfig;
 
-@SpringJUnitConfig(classes = { MasterDomain.class, JaversClientContext.class, JaversTestContext.class })
+@SpringJUnitConfig(classes = { MasterDomain.class, JaversClientContext.class, JaversTestContext.class,
+        JaversPersistenceContext.class })
+@TestPropertySource("classpath:core-test.properties")
 public abstract class AbstractTest {
 
     private static Supplier<Object> JDBC_URL_SUPPLIER;
@@ -51,6 +57,13 @@ public abstract class AbstractTest {
 
     @DynamicPropertySource
     static void configureProperties(final DynamicPropertyRegistry registry) {
+        registry.add("DB_TYPE", () -> "POSTGRESQL");
+        registry.add("JDBC_DRIVER", () -> "org.postgresql.Driver");
+        registry.add("DATABASE_PLATFORM", () -> "org.apache.openjpa.jdbc.sql.PostgresDictionary");
+        registry.add("ORM", () -> "META-INF/spring-orm.xml");
+        registry.add("INDEXES", () -> "classpath:META-INF/indexes.xml");
+        registry.add("VIEWS", () -> "classpath:META-INF/views.xml");
+
         registry.add("DB_URL", JDBC_URL_SUPPLIER);
         registry.add("DB_USER", DB_CRED_SUPPLIER);
         registry.add("DB_PASSWORD", DB_CRED_SUPPLIER);

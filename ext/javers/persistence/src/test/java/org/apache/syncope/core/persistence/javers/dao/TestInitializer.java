@@ -16,10 +16,12 @@
  * specific language governing permissions and limitations
  * under the License.
  */
+package org.apache.syncope.core.persistence.javers.dao;
 
 import org.apache.syncope.common.lib.SyncopeConstants;
 import org.apache.syncope.core.persistence.api.ApplicationContextProvider;
 import org.apache.syncope.core.persistence.api.content.ContentLoader;
+import org.apache.syncope.core.persistence.javers.loader.JaversStartupDomainLoader;
 import org.apache.syncope.core.persistence.jpa.StartupDomainLoader;
 import org.springframework.beans.factory.InitializingBean;
 import org.springframework.beans.factory.support.DefaultListableBeanFactory;
@@ -29,6 +31,8 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 public class TestInitializer implements InitializingBean {
 
     private final StartupDomainLoader domainLoader;
+    
+    private final JaversStartupDomainLoader javersDomainLoader;
 
     private final ContentLoader contentLoader;
 
@@ -36,10 +40,12 @@ public class TestInitializer implements InitializingBean {
 
     public TestInitializer(
             final StartupDomainLoader domainLoader,
+            final JaversStartupDomainLoader javersDomainLoader,
             final ContentLoader contentLoader,
             final ConfigurableApplicationContext ctx) {
 
         this.domainLoader = domainLoader;
+        this.javersDomainLoader = javersDomainLoader;
         this.contentLoader = contentLoader;
         this.ctx = ctx;
     }
@@ -54,6 +60,8 @@ public class TestInitializer implements InitializingBean {
         }
 
         domainLoader.load();
+
+        javersDomainLoader.load(SyncopeConstants.MASTER_DOMAIN);
 
         contentLoader.load(SyncopeConstants.MASTER_DOMAIN);
     }
