@@ -130,8 +130,7 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(UserTO.class)
                                 .withIdPropertyName("key")
-                                .withIgnoredProperties(List.of("token", "password", "tokenExpireTime", "securityAnswer",
-                                        "lastChangeDate"))
+                                .withIgnoredProperties(List.of("password", "securityAnswer", "lastChangeDate"))
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(GroupTO.class)
                                 .withIdPropertyName("key")
