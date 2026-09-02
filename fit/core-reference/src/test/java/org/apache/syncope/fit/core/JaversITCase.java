@@ -32,6 +32,8 @@ import org.apache.syncope.client.lib.SyncopeClientFactoryBean;
 import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.SyncopeClientException;
 import org.apache.syncope.common.lib.SyncopeConstants;
+import org.apache.syncope.common.lib.request.AnyObjectCR;
+import org.apache.syncope.common.lib.request.AnyObjectUR;
 import org.apache.syncope.common.lib.request.AttrPatch;
 import org.apache.syncope.common.lib.request.GroupCR;
 import org.apache.syncope.common.lib.request.GroupUR;
@@ -43,6 +45,7 @@ import org.apache.syncope.common.lib.request.StringPatchItem;
 import org.apache.syncope.common.lib.request.StringReplacePatchItem;
 import org.apache.syncope.common.lib.request.UserCR;
 import org.apache.syncope.common.lib.request.UserUR;
+import org.apache.syncope.common.lib.to.AnyObjectTO;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.LinkedAccountTO;
@@ -61,13 +64,14 @@ import org.apache.syncope.common.lib.types.MatchingRule;
 import org.apache.syncope.common.lib.types.PatchOperation;
 import org.apache.syncope.common.lib.types.UnmatchingRule;
 import org.apache.syncope.common.rest.api.beans.ReconQuery;
-import org.apache.syncope.common.rest.api.service.JaversAuditService;
+import org.apache.syncope.common.rest.api.service.JaversAuditUserService;
 import org.apache.syncope.common.rest.api.service.UserService;
 import org.apache.syncope.fit.AbstractITCase;
 import org.javers.core.diff.changetype.PropertyChangeType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 public class JaversITCase extends AbstractITCase {
 
@@ -101,7 +105,7 @@ public class JaversITCase extends AbstractITCase {
     }
 
     @Test
-    public void crudUserEvents() {
+    public void crudUsers() {
         GroupTO otherchild = GROUP_SERVICE.read("f779c0d4-633b-4be5-8f57-32eb478a3ca5");
         GroupTO additional = GROUP_SERVICE.read("034740a9-fa10-453b-af37-dc7897e98fb1");
         GroupTO artDirector = GROUP_SERVICE.read("ece66293-8f31-4a84-8e8d-23da36e70846");
@@ -215,9 +219,8 @@ public class JaversITCase extends AbstractITCase {
 
             // 1. search and test shadows
             PagedResult<ShadowTO<UserTO>> shadows = JAVERS_AUDIT_USER_SERVICE.shadows(userKey, 1, 25);
-            assertTrue(shadows.getTotalCount() >= 3); // TODO rimuovere prima della pr
-            //            assertEquals(3, shadows.getTotalCount());
-            //            assertEquals(3, shadows.getResult().size());
+            assertEquals(4, shadows.getTotalCount());
+            assertEquals(4, shadows.getResult().size());
             ShadowTO<UserTO> shadowCommit1 = shadows.getResult()
                     .stream()
                     .filter(shadow -> "INITIAL".equals(shadow.getType()) && shadow.getVersion() == 1L)
@@ -524,8 +527,7 @@ public class JaversITCase extends AbstractITCase {
             // search by author only, without the entity key
             List<ChangesByCommitTO> anotherAdminChanges =
                     JAVERS_AUDIT_USER_SERVICE.changes(null, anotherAdmin.getUsername(), null, null, 1, 25);
-            //            assertEquals(1, anotherAdminChanges.size());
-            assertTrue(anotherAdminChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
+            assertEquals(1, anotherAdminChanges.size());
             assertTrue(anotherAdminChanges.getFirst()
                     .getChanges()
                     .getValueChanges()
@@ -545,8 +547,7 @@ public class JaversITCase extends AbstractITCase {
 
             anotherAdminChanges =
                     JAVERS_AUDIT_USER_SERVICE.changes(userKey, anotherAdmin.getUsername(), null, null, 1, 25);
-            //            assertEquals(1, anotherAdminChanges.size());
-            assertTrue(anotherAdminChanges.size() > 0); // TODO rimuovere quest'asserzione prima della PR
+            assertEquals(1, anotherAdminChanges.size());
             assertTrue(anotherAdminChanges.getFirst()
                     .getChanges()
                     .getValueChanges()
@@ -581,6 +582,7 @@ public class JaversITCase extends AbstractITCase {
         pullTask.setRemediation(true);
         pullTask.setPerformCreate(true);
         pullTask.setPerformUpdate(true);
+        pullTask.setSyncStatus(true);
         pullTask.setUnmatchingRule(UnmatchingRule.ASSIGN);
         pullTask.setMatchingRule(MatchingRule.UPDATE);
 
@@ -591,9 +593,8 @@ public class JaversITCase extends AbstractITCase {
         UserTO rossini = USER_SERVICE.read("rossini");
 
         PagedResult<ShadowTO<UserTO>> shadows = JAVERS_AUDIT_USER_SERVICE.shadows(rossini.getKey(), 1, 25);
-        assertTrue(shadows.getTotalCount() >= 1); // TODO rimuovere prima della pr
-        //        assertEquals(1, shadows.getTotalCount());
-        //        assertEquals(1, shadows.getResult().size());
+        assertEquals(1, shadows.getTotalCount());
+        assertEquals(1, shadows.getResult().size());
         ShadowTO<UserTO> shadowCommit1 = shadows.getResult()
                 .stream()
                 .filter(shadow -> "INITIAL".equals(shadow.getType()) && shadow.getVersion() == 1L)
@@ -603,13 +604,28 @@ public class JaversITCase extends AbstractITCase {
         assertFalse(shadowCommit1.getAdditionalInfo().isEmpty());
         assertTrue(shadowCommit1.getAdditionalInfo().get("context").contains("PULL Task"));
 
-        // re-pull and generate an update
+        // re-pull and generate an empty update -> no changes means empty commit that is not going to be persisted
         RECONCILIATION_SERVICE.pull(
                 new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_TESTDB2).fiql("ID==rossini").build(),
                 pullTask);
         shadows = JAVERS_AUDIT_USER_SERVICE.shadows(rossini.getKey(), 1, 25);
-        assertEquals(2, shadows.getTotalCount());
-        assertEquals(2, shadows.getResult().size());
+        assertEquals(1, shadows.getTotalCount());
+        assertEquals(1, shadows.getResult().size());
+        JdbcTemplate test2JdbcTemplate = new JdbcTemplate(testDataSource);
+        try {
+            // generate an update on database and re-pull
+            test2JdbcTemplate.update("UPDATE test2 SET status = false WHERE id = 'rossini'");
+
+            // re-pull and generate a real update event
+            RECONCILIATION_SERVICE.pull(
+                    new ReconQuery.Builder(AnyTypeKind.USER.name(), RESOURCE_NAME_TESTDB2).fiql("ID==rossini").build(),
+                    pullTask);
+            shadows = JAVERS_AUDIT_USER_SERVICE.shadows(rossini.getKey(), 1, 25);
+            assertEquals(2, shadows.getTotalCount());
+            assertEquals(2, shadows.getResult().size());
+        } finally {
+            test2JdbcTemplate.update("UPDATE test2 SET status = true WHERE id = 'rossini'");
+        }
     }
 
     @Test
@@ -625,7 +641,7 @@ public class JaversITCase extends AbstractITCase {
 
         // 1. search and test shadows
         PagedResult<ShadowTO<UserTO>> shadows = twoCF.create(ADMIN_UNAME, "password2")
-                .getService(JaversAuditService.class)
+                .getService(JaversAuditUserService.class)
                 .shadows(userTO.getKey(), 1, 25);
         assertEquals(1, shadows.getTotalCount());
         assertEquals(1, shadows.getResult().size());
@@ -645,7 +661,7 @@ public class JaversITCase extends AbstractITCase {
     }
 
     @Test
-    public void crudGroupEvents() {
+    public void crudGroups() {
         // create a new relationship type to relate group and any objects
         RelationshipTypeTO relationshipType = new RelationshipTypeTO();
         relationshipType.setKey("grp_inclusion");
@@ -671,11 +687,11 @@ public class JaversITCase extends AbstractITCase {
         String groupKey = groupTO.getKey();
 
         // first update: change name and attributes
-        String orginalName = groupTO.getName();
+        String originalName = groupTO.getName();
         groupCR.getTypeExtensions().add(userTE);
         updateGroup(new GroupUR.Builder(groupKey).name(
-                        new StringReplacePatchItem.Builder().value(orginalName + "_upd").build())
-                .plainAttrs(attrAddReplacePatch("originalName", orginalName),
+                        new StringReplacePatchItem.Builder().value(originalName + "_upd").build())
+                .plainAttrs(attrAddReplacePatch("originalName", originalName),
                         attrAddReplacePatch("icon", "anotherIcon"))
                 .typeExtension(userTE)
                 .build());
@@ -717,8 +733,24 @@ public class JaversITCase extends AbstractITCase {
                         .getValueChanges()
                         .stream()
                         .anyMatch(vc -> "name".equals(vc.getField()) && vc.getNewValues().contains(newName)
-                                && vc.getOldValues().contains(orginalName))));
-        // changes in name
+                                && vc.getOldValues().contains(originalName))));
+
+        // changes in attributes
+        assertTrue(changes.stream()
+                .anyMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "plainAttrs[icon]".equals(vc.getField()) && vc.getNewValues()
+                                .contains("anotherIcon") && vc.getOldValues().contains("anIcon"))));
+
+        assertTrue(changes.stream()
+                .anyMatch(c -> c.getChanges()
+                        .getValueChanges()
+                        .stream()
+                        .anyMatch(vc -> "plainAttrs[originalName]".equals(vc.getField()) && vc.getNewValues()
+                                .contains(originalName) && vc.getOldValues().isEmpty())));
+
+        // changes in type extensions
         assertTrue(changes.stream()
                 .anyMatch(c -> c.getChanges()
                         .getValueChanges()
@@ -731,9 +763,132 @@ public class JaversITCase extends AbstractITCase {
                         .getValueChanges()
                         .stream()
                         .anyMatch(vc -> "typeExtensions".equals(vc.getField()) && vc.getNewValues()
-                                .contains("typeExtensions[PRINTER].auxClasses[minimal printer]")
-                                && vc.getOldValues()
+                                .contains("typeExtensions[PRINTER].auxClasses[minimal printer]") && vc.getOldValues()
                                 .contains("typeExtensions[USER].auxClasses[csv,generic membership]"))));
+    }
+
+    @Test
+    void crudAnyObjects() {
+        GroupTO otherchild = GROUP_SERVICE.read("f779c0d4-633b-4be5-8f57-32eb478a3ca5");
+        GroupTO artDirector = GROUP_SERVICE.read("ece66293-8f31-4a84-8e8d-23da36e70846");
+
+        AnyObjectCR anyObjectCR = AnyObjectITCase.getSample("3rdfloor");
+        anyObjectCR.getResources().add(RESOURCE_NAME_NOPROPAGATION);
+        anyObjectCR.getAuxClasses().add("other");
+        // memberships
+        anyObjectCR.getMemberships()
+                .add(new MembershipTO.Builder(otherchild.getKey()).plainAttrs(attr("ctype", "printerctype"),
+                        attr("cool", "false")).build());
+        // relationships
+        anyObjectCR.getRelationships().add(new RelationshipTO.Builder("inclusion").otherEnd(HP_PRINTER_KEY).build());
+
+        anyObjectCR.setGManager(otherchild.getKey());
+
+        AnyObjectTO newPrinter = createAnyObject(anyObjectCR).getEntity();
+
+        try {
+            // 1. update any object name, attribute and resources removing NOPROPAGATION and adding NOPROPAGATION2
+            String originalName = newPrinter.getName();
+            String newName = "4rdfloor" + getUUIDString();
+            String originalLocation = newPrinter.getPlainAttr("location").orElseThrow().getValues().get(0);
+            updateAnyObject(new AnyObjectUR.Builder(newPrinter.getKey()).name(
+                            new StringReplacePatchItem.Builder().value(newName).build())
+                    .plainAttr(attrAddReplacePatch("location", "4th floor"))
+                    .resources(new StringPatchItem.Builder().value(RESOURCE_NAME_NOPROPAGATION)
+                            .operation(PatchOperation.DELETE)
+                            .build(), new StringPatchItem.Builder().value(RESOURCE_NAME_NOPROPAGATION2).build())
+                    .build());
+            // 2. update manager setting bellini instead of otherGroup, memberships removing otherChild and adding
+            // artDirector and relationships replacing the HP with the Canon printer
+            updateAnyObject(new AnyObjectUR.Builder(newPrinter.getKey()).gManager(
+                            new StringReplacePatchItem.Builder().value(artDirector.getKey()).build())
+                    .memberships(new MembershipUR.Builder(otherchild.getKey()).operation(PatchOperation.DELETE).build(),
+                            new MembershipUR.Builder(artDirector.getKey()).build())
+                    .relationships(new RelationshipUR.Builder("inclusion").otherEnd(HP_PRINTER_KEY)
+                            .operation(PatchOperation.DELETE)
+                            .build(), new RelationshipUR.Builder("inclusion").otherEnd(CANON_PRINTER_KEY).build())
+                    .build());
+
+            // 1. search and test shadows
+            PagedResult<ShadowTO<AnyObjectTO>> shadows =
+                    JAVERS_AUDIT_ANY_OBJECT_SERVICE.shadows(newPrinter.getKey(), 1, 25);
+            assertEquals(3, shadows.getTotalCount());
+
+            // 2. search changes by entity key
+            List<ChangesByCommitTO> changes =
+                    JAVERS_AUDIT_ANY_OBJECT_SERVICE.changes(newPrinter.getKey(), "admin", null, null, 1, 25);
+            assertFalse(changes.isEmpty());
+            // changes in gManager and uManager
+            assertTrue(changes.stream()
+                    .anyMatch(pc -> pc.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "gManager".equals(vc.getField()) && vc.getOldValues()
+                                    .contains(otherchild.getKey()) && vc.getNewValues()
+                                    .contains(artDirector.getKey()))));
+            // changes key must match the any object key
+            assertTrue(changes.stream()
+                    .allMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .allMatch(vc -> vc.getEntityKey().contains(newPrinter.getKey()))));
+
+            // changes in name
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "name".equals(vc.getField()) && vc.getNewValues().contains(newName)
+                                    && vc.getOldValues().contains(originalName))));
+
+            // changes on resources
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "resources".equals(vc.getField()) && vc.getNewValues()
+                                    .contains(RESOURCE_NAME_NOPROPAGATION2) && vc.getOldValues()
+                                    .contains(RESOURCE_NAME_NOPROPAGATION))));
+
+            // changes in attributes
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "plainAttrs[location]".equals(vc.getField()) && vc.getNewValues()
+                                    .contains("4th floor") && vc.getOldValues().contains(originalLocation))));
+            // changes in memberships
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "memberships".equals(vc.getField()) && vc.getOldValues()
+                                    .contains(otherchild.getKey() + "," + otherchild.getName()) && vc.getNewValues()
+                                    .contains(artDirector.getKey() + "," + artDirector.getName()))));
+
+            // changes in relationships
+            assertTrue(changes.stream()
+                    .anyMatch(c -> c.getChanges()
+                            .getValueChanges()
+                            .stream()
+                            .anyMatch(vc -> "relationships".equals(vc.getField()) && vc.getOldValues()
+                                    .contains("inclusion,LEFT,PRINTER," + HP_PRINTER_KEY) && vc.getNewValues()
+                                    .contains("inclusion,LEFT,PRINTER," + CANON_PRINTER_KEY))));
+        } finally {
+            // delete any object and generate a delete event
+            ANY_OBJECT_SERVICE.delete(newPrinter.getKey());
+        }
+        PagedResult<ShadowTO<AnyObjectTO>> shadows =
+                JAVERS_AUDIT_ANY_OBJECT_SERVICE.shadows(newPrinter.getKey(), 1, 25);
+        assertEquals(4, shadows.getTotalCount());
+        assertEquals(4, shadows.getResult().size());
+        Optional<ShadowTO<AnyObjectTO>> shadowCommit4 = shadows.getResult()
+                .stream()
+                .filter(shadow -> "TERMINAL".equals(shadow.getType()) && shadow.getVersion() == 4L)
+                .findFirst();
+        assertTrue(shadowCommit4.isPresent());
+        assertEquals("admin", shadowCommit4.get().getWho());
+
     }
 
 }

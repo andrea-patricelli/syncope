@@ -26,6 +26,7 @@ import org.apache.commons.lang3.StringUtils;
 import org.apache.syncope.common.keymaster.client.api.DomainOps;
 import org.apache.syncope.common.keymaster.client.api.model.Domain;
 import org.apache.syncope.common.keymaster.client.api.model.JPADomain;
+import org.apache.syncope.common.lib.to.AnyObjectTO;
 import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.core.persistence.api.DomainHolder;
@@ -130,12 +131,21 @@ public class JaversStartupDomainLoader implements SyncopeCoreLoader {
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(UserTO.class)
                                 .withIdPropertyName("key")
-                                .withIgnoredProperties(List.of("password", "securityAnswer", "lastChangeDate"))
+                                .withIgnoredProperties(
+                                        List.of("password", "lastChangeDate", "lastChangeContext", "lastModifier",
+                                                "creationDate", "creator"))
                                 .build())
                         .registerEntity(EntityDefinitionBuilder.entityDefinition(GroupTO.class)
                                 .withIdPropertyName("key")
                                 .withIgnoredProperties(
-                                        List.of("userMembershipCount", "anyObjectMembershipCount", "lastChangeDate"))
+                                        List.of("userMembershipCount", "anyObjectMembershipCount", "lastChangeDate",
+                                                "lastChangeContext", "lastModifier", "creationDate", "creator"))
+                                .build())
+                        .registerEntity(EntityDefinitionBuilder.entityDefinition(AnyObjectTO.class)
+                                .withIdPropertyName("key")
+                                .withIgnoredProperties(
+                                        List.of("lastChangeDate", "lastChangeContext", "lastModifier", "creationDate",
+                                                "creator"))
                                 .build())
                         .registerIgnoredClassesStrategy(c -> c.getName().startsWith("org.apache.syncope"))
                         .build()).getBeanDefinition());

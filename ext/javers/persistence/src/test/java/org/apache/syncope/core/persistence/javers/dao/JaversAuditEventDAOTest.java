@@ -35,6 +35,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.apache.syncope.common.lib.Attr;
 import org.apache.syncope.common.lib.SyncopeConstants;
+import org.apache.syncope.common.lib.to.AnyObjectTO;
 import org.apache.syncope.common.lib.to.ChangesByCommitTO;
 import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.ShadowTO;
@@ -208,6 +209,39 @@ public class JaversAuditEventDAOTest {
         assertEquals("testgrp_v185", events100To200.getContent().get(85).getAnyTO().getName());
     }
 
+    @Test
+    public void searchForAnyObjectSnapshots() {
+        AnyObjectTO anyObject01 = new AnyObjectTO();
+        anyObject01.setKey(UUID.randomUUID().toString());
+        anyObject01.setName("testanyobject");
+
+        List<Shadow<AnyObjectTO>> shadows0To100 = generateAnyObjectShadows(anyObject01, 0, 100);
+        List<Shadow<AnyObjectTO>> shadows100To200 = generateAnyObjectShadows(anyObject01, 100, 190);
+
+        when(javers.findShadowsAndStream(ArgumentMatchers.any(JqlQuery.class))).thenAnswer(ic -> shadows0To100.stream())
+                .thenAnswer(ic -> shadows100To200.stream());
+
+        // first page
+        Page<ShadowTO<AnyObjectTO>> events0To100 =
+                auditEventDAO.searchForShadows(anyObject01.getKey(), null, null, PageRequest.of(0, 100),
+                        AnyObjectTO.class);
+        assertEquals(100, events0To100.getTotalElements());
+        assertTrue(events0To100.getContent()
+                .getFirst()
+                .getWhen()
+                .truncatedTo(ChronoUnit.HOURS)
+                .isEqual(OffsetDateTime.now().truncatedTo(ChronoUnit.HOURS)));
+        assertEquals("admin_of_testanyobject_v0", events0To100.getContent().getFirst().getWho());
+        assertEquals("testanyobject_v0", events0To100.getContent().getFirst().getAnyTO().getName());
+        assertEquals("testanyobject_v11", events0To100.getContent().get(11).getAnyTO().getName());
+        // second page
+        Page<ShadowTO<AnyObjectTO>> events100To200 =
+                auditEventDAO.searchForShadows(anyObject01.getKey(), null, null, PageRequest.of(1, 100),
+                        AnyObjectTO.class);
+        assertEquals(90, events100To200.getTotalElements());
+        assertEquals("testanyobject_v185", events100To200.getContent().get(85).getAnyTO().getName());
+    }
+
     private List<Shadow<UserTO>> generateUserShadows(final UserTO user01, final int start, final int end) {
         List<Shadow<UserTO>> shadows = new ArrayList<>();
         for (int i = start; i < end; i++) {
@@ -287,6 +321,34 @@ public class JaversAuditEventDAOTest {
             CommitMetadata commitMetadata = Mockito.mock(CommitMetadata.class);
             when(commitMetadata.getCommitDate()).thenReturn(LocalDateTime.now());
             when(commitMetadata.getAuthor()).thenReturn("admin_of_" + grpVersion.getName());
+            when(mockShadow.getCommitMetadata()).thenReturn(commitMetadata);
+        }
+        return shadows;
+    }
+
+    private List<Shadow<AnyObjectTO>> generateAnyObjectShadows(
+            final AnyObjectTO anyObject,
+            final int start,
+            final int end) {
+        List<Shadow<AnyObjectTO>> shadows = new ArrayList<>();
+        for (int i = start; i < end; i++) {
+            AnyObjectTO anyObjectVersion = new AnyObjectTO();
+            anyObjectVersion.setKey(anyObject.getKey());
+            anyObjectVersion.setName("testanyobject_v" + i);
+            Shadow mockShadow = mock(Shadow.class);
+            when(mockShadow.get()).thenReturn(anyObjectVersion);
+            CdoSnapshot snapshot = mock(CdoSnapshot.class);
+            GlobalId globalId = mock(GlobalId.class);
+            when(globalId.value()).thenReturn(UUID.randomUUID().toString());
+            when(snapshot.getGlobalId()).thenReturn(globalId);
+            SnapshotType snapshotType = mock(SnapshotType.class);
+            when(snapshot.getType()).thenReturn(snapshotType);
+            when(snapshotType.name()).thenReturn(AnyObjectTO.class.getSimpleName());
+            when(mockShadow.getCdoSnapshot()).thenReturn(snapshot);
+            shadows.add(mockShadow);
+            CommitMetadata commitMetadata = Mockito.mock(CommitMetadata.class);
+            when(commitMetadata.getCommitDate()).thenReturn(LocalDateTime.now());
+            when(commitMetadata.getAuthor()).thenReturn("admin_of_" + anyObjectVersion.getName());
             when(mockShadow.getCommitMetadata()).thenReturn(commitMetadata);
         }
         return shadows;

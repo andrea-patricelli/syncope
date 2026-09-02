@@ -1,8 +1,10 @@
 package org.apache.syncope.ext.javers.client;
 
+import org.apache.syncope.common.lib.to.AnyObjectTO;
 import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.core.persistence.api.entity.Entity;
+import org.apache.syncope.core.persistence.api.entity.anyobject.AnyObject;
 import org.apache.syncope.core.persistence.api.entity.group.Group;
 import org.apache.syncope.core.persistence.api.entity.user.User;
 import org.apache.syncope.core.provisioning.api.data.AnyObjectDataBinder;
@@ -25,7 +27,7 @@ public class JaversAuditManager {
     protected final JaversDomainLocator javersDomainLocator;
 
     private final UserDataBinder userDataBinder;
-    
+
     private final GroupDataBinder groupDataBinder;
 
     private final AnyObjectDataBinder anyObjectDataBinder;
@@ -60,7 +62,7 @@ public class JaversAuditManager {
                 javers.commitShallowDeleteById(AuthContextUtils.getUsername(),
                         InstanceIdDTO.instanceId(event.getEntity().getKey(), UserTO.class), event.getAdditionalInfos());
             }
-        } else if (event.getEntity() instanceof Group){
+        } else if (event.getEntity() instanceof Group) {
             if (event.getType() == SyncDeltaType.CREATE_OR_UPDATE || event.getType() == SyncDeltaType.CREATE
                     || event.getType() == SyncDeltaType.UPDATE) {
                 GroupTO groupTO = groupDataBinder.getGroupTO((Group) event.getEntity(), true);
@@ -68,10 +70,25 @@ public class JaversAuditManager {
                         groupTO.getName(), event.getAdditionalInfos());
                 javers.commit(AuthContextUtils.getUsername(), groupTO, event.getAdditionalInfos());
             } else if (event.getType() == SyncDeltaType.DELETE) {
-                LOG.debug("About to commit DELETE event on user {} with additional infos {}",
-                        ((User) event.getEntity()).getUsername(), event.getAdditionalInfos());
+                LOG.debug("About to commit DELETE event on group {} with additional infos {}",
+                        ((Group) event.getEntity()).getName(), event.getAdditionalInfos());
                 javers.commitShallowDeleteById(AuthContextUtils.getUsername(),
-                        InstanceIdDTO.instanceId(event.getEntity().getKey(), UserTO.class), event.getAdditionalInfos());
+                        InstanceIdDTO.instanceId(event.getEntity().getKey(), GroupTO.class),
+                        event.getAdditionalInfos());
+            }
+        } else {
+            if (event.getType() == SyncDeltaType.CREATE_OR_UPDATE || event.getType() == SyncDeltaType.CREATE
+                    || event.getType() == SyncDeltaType.UPDATE) {
+                AnyObjectTO anyObjectTO = anyObjectDataBinder.getAnyObjectTO((AnyObject) event.getEntity(), true);
+                LOG.debug("About to commit CREATE_OR_UPDATE event on any object {} with additional infos {}",
+                        anyObjectTO.getName(), event.getAdditionalInfos());
+                javers.commit(AuthContextUtils.getUsername(), anyObjectTO, event.getAdditionalInfos());
+            } else if (event.getType() == SyncDeltaType.DELETE) {
+                LOG.debug("About to commit DELETE event on any object {} with additional infos {}",
+                        ((AnyObject) event.getEntity()).getName(), event.getAdditionalInfos());
+                javers.commitShallowDeleteById(AuthContextUtils.getUsername(),
+                        InstanceIdDTO.instanceId(event.getEntity().getKey(), AnyObjectTO.class),
+                        event.getAdditionalInfos());
             }
         }
     }

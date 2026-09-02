@@ -193,7 +193,7 @@ under the License.
     </dependency>
     <dependency>
       <groupId>org.apache.syncope.ext.javers</groupId>
-      <artifactId>syncope-ext-javers-rest-cxf</artifactId>
+      <artifactId>syncope-ext-javers-rest-api</artifactId>
       <version>${project.version}</version>
     </dependency>
     <dependency>
@@ -1636,7 +1636,7 @@ under the License.
       </properties>
 
       <build>
-<!--        <defaultGoal>clean verify</defaultGoal>-->
+        <defaultGoal>clean verify</defaultGoal>
 
         <plugins>
           <plugin>
@@ -1655,8 +1655,8 @@ under the License.
       <dependencies>
         <dependency>
           <groupId>org.apache.syncope.ext.javers</groupId>
-          <artifactId>syncope-ext-javers-persistence</artifactId>
-          <version>${project.version}</version>
+           <artifactId>syncope-ext-javers-rest-cxf</artifactId>
+           <version>${project.version}</version>
         </dependency>
       </dependencies>
     </profile>

@@ -337,7 +337,8 @@ public class JaversAuditEventDAOImpl implements JaversAuditEventDAO {
                                                         .forEach(pc -> plainAttrsDiff((CollectionChange<?>) pc,
                                                                 propertyChangeTOs,
                                                                 propertyChange.getAffectedGlobalId().value(),
-                                                                "linkedAccounts[" + newLinkedAccount.getConnObjectKeyValue()
+                                                                "linkedAccounts[" 
+                                                                        + newLinkedAccount.getConnObjectKeyValue()
                                                                         + "," + newLinkedAccount.getResource() + "].")),
                                                 () -> newLinkedAccount.getPlainAttrs().forEach(mpa -> {
                                                     PropertyChangeTO plainAttrChangeTO = new PropertyChangeTO();

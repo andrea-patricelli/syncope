@@ -27,6 +27,7 @@ import java.time.OffsetDateTime;
 import java.util.List;
 import org.apache.commons.lang3.RandomStringUtils;
 import org.apache.syncope.common.lib.SyncopeConstants;
+import org.apache.syncope.common.lib.to.AnyObjectTO;
 import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.UserTO;
 import org.apache.syncope.common.lib.types.AnyTypeKind;
@@ -43,6 +44,7 @@ import org.apache.syncope.core.persistence.api.entity.group.Group;
 import org.apache.syncope.core.persistence.api.entity.user.UMembership;
 import org.apache.syncope.core.persistence.api.entity.user.User;
 import org.apache.syncope.core.provisioning.api.event.EntityLifecycleEvent;
+import org.apache.syncope.core.workflow.api.AnyObjectWorkflowAdapter;
 import org.apache.syncope.core.workflow.api.GroupWorkflowAdapter;
 import org.apache.syncope.core.workflow.api.UserWorkflowAdapter;
 import org.apache.syncope.ext.javers.client.JaversAuditManager;
@@ -94,7 +96,7 @@ public class JaversAuditManagerTest extends AbstractTest {
     private JaversAuditManager javersAuditManager;
 
     @Test
-    public void userCRUD() {
+    public void crud() {
         // create sample any object employee
         AnyType printerAnyType = entityFactory.newEntity(AnyType.class);
         printerAnyType.setKind(AnyTypeKind.ANY_OBJECT);
@@ -212,24 +214,39 @@ public class JaversAuditManagerTest extends AbstractTest {
         assertFalse(changesEmployee.groupByCommit().isEmpty());
         assertEquals(1, changesEmployee.groupByCommit().size());
 
-        // sample event on any object employee
-        //        javersAuditManager.entity(
-        //                new EntityLifecycleEvent<>(Mockito.mock(AnyObjectWorkflowAdapter.class), SyncDeltaType
-        //                .CREATE_OR_UPDATE,
-        //                        employee, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", 
-        //                        "someAnyObjcontext")
-        //                        .addAdditionalInfo("category", "someAnyObjcategory")
-        //                        .addAdditionalInfo("subcategory", "someAnyObjsubcategory"));
-        //
-        //        List<Shadow<GroupTO>> shadowsPrinter01 =
-        //                javers.findShadows(QueryBuilder.byInstanceId(printer01.getKey(), AnyObjectTO.class).build());
-        //        assertFalse(shadowsPrinter01.isEmpty());
-        //        assertEquals("someAnyObjcontext", shadowsPrinter01.getFirst().getCommitMetadata().getProperties()
-        //        .get("context"));
-        //        assertEquals("someAnyObjcategory", shadowsPrinter01.getFirst().getCommitMetadata().getProperties()
-        //        .get("category"));
-        //        assertEquals("someAnyObjsubcategory",
-        //                shadowsPrinter01.getFirst().getCommitMetadata().getProperties().get("subcategory"));
+        // sample event on any object
+        javersAuditManager.entity(
+                new EntityLifecycleEvent<>(Mockito.mock(AnyObjectWorkflowAdapter.class), SyncDeltaType.CREATE_OR_UPDATE,
+                        printer01, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", "someAnyObjcontext")
+                        .addAdditionalInfo("category", "someAnyObjcategory")
+                        .addAdditionalInfo("subcategory", "someAnyObjsubcategory"));
+
+        // update event on any object
+        printer01.setName("printer01_upd");
+        printer01 = anyObjectDAO.save(printer01);
+        assertNotNull(printer01);
+
+        javersAuditManager.entity(
+                new EntityLifecycleEvent<>(Mockito.mock(AnyObjectWorkflowAdapter.class), SyncDeltaType.CREATE_OR_UPDATE,
+                        printer01, SyncopeConstants.MASTER_DOMAIN).addAdditionalInfo("context", "someAnyObjcontext")
+                        .addAdditionalInfo("category", "someAnyObjcategory")
+                        .addAdditionalInfo("subcategory", "someAnyObjsubcategory"));
+
+        List<Shadow<GroupTO>> shadowsPrinter01 =
+                javers.findShadows(QueryBuilder.byInstanceId(printer01.getKey(), AnyObjectTO.class).build());
+        assertFalse(shadowsPrinter01.isEmpty());
+        assertEquals(2, shadowsPrinter01.size());
+        assertEquals("someAnyObjcontext",
+                shadowsPrinter01.getFirst().getCommitMetadata().getProperties().get("context"));
+        assertEquals("someAnyObjcategory",
+                shadowsPrinter01.getFirst().getCommitMetadata().getProperties().get("category"));
+        assertEquals("someAnyObjsubcategory",
+                shadowsPrinter01.getFirst().getCommitMetadata().getProperties().get("subcategory"));
+
+        Changes changesPrinter01 =
+                javers.findChanges(QueryBuilder.byInstanceId(printer01.getKey(), AnyObjectTO.class).build());
+        assertFalse(changesPrinter01.groupByCommit().isEmpty());
+        assertEquals(2, changesPrinter01.groupByCommit().size());
     }
 
 }
