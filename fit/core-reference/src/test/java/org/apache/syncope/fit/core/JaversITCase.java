@@ -51,6 +51,7 @@ import org.apache.syncope.common.lib.to.GroupTO;
 import org.apache.syncope.common.lib.to.LinkedAccountTO;
 import org.apache.syncope.common.lib.to.MembershipTO;
 import org.apache.syncope.common.lib.to.PagedResult;
+import org.apache.syncope.common.lib.to.PropertyChangeTO;
 import org.apache.syncope.common.lib.to.ProvisioningResult;
 import org.apache.syncope.common.lib.to.PullTaskTO;
 import org.apache.syncope.common.lib.to.RelationshipTO;
@@ -67,7 +68,6 @@ import org.apache.syncope.common.rest.api.beans.ReconQuery;
 import org.apache.syncope.common.rest.api.service.JaversAuditUserService;
 import org.apache.syncope.common.rest.api.service.UserService;
 import org.apache.syncope.fit.AbstractITCase;
-import org.javers.core.diff.changetype.PropertyChangeType;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -141,7 +141,7 @@ public class JaversITCase extends AbstractITCase {
         userCR.getLinkedAccounts().add(testUser02);
 
         // set user manager bellini
-        userCR.setUManager(BELLINI_KEY);
+        userCR.setuManager(BELLINI_KEY);
 
         UserTO userTO = createUser(userCR).getEntity();
         assertEquals(2, userTO.getMemberships().size());
@@ -153,7 +153,7 @@ public class JaversITCase extends AbstractITCase {
             userUR.setPassword(new PasswordPatch.Builder().value("new2Password").build());
 
             // change user manager
-            userUR.setUManager(new StringReplacePatchItem.Builder().value(PUCCINI_KEY).build());
+            userUR.setuManager(new StringReplacePatchItem.Builder().value(PUCCINI_KEY).build());
 
             String oldUserId = userTO.getPlainAttr("userId").orElseThrow().getValues().getFirst();
             String oldFullname = userTO.getPlainAttr("fullname").orElseThrow().getValues().getFirst();
@@ -228,7 +228,7 @@ public class JaversITCase extends AbstractITCase {
                     .orElseThrow();
             assertEquals("admin", shadowCommit1.getWho());
             assertEquals(userTO.getUsername(), shadowCommit1.getAnyTO().getUsername());
-            assertEquals(BELLINI_KEY, shadowCommit1.getAnyTO().getUManager());
+            assertEquals(BELLINI_KEY, shadowCommit1.getAnyTO().getuManager());
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("userId").isPresent());
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("userId").get().getValues().contains(oldUserId));
             assertTrue(shadowCommit1.getAnyTO().getPlainAttr("fullname").isPresent());
@@ -284,7 +284,7 @@ public class JaversITCase extends AbstractITCase {
                     .orElseThrow();
             assertEquals("admin", shadowCommit2.getWho());
             assertEquals(userTO.getUsername(), shadowCommit1.getAnyTO().getUsername());
-            assertEquals(PUCCINI_KEY, userTO.getUManager());
+            assertEquals(PUCCINI_KEY, userTO.getuManager());
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("userId").isPresent());
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("userId").get().getValues().contains(newUserId));
             assertTrue(shadowCommit2.getAnyTO().getPlainAttr("fullname").isPresent());
@@ -452,21 +452,23 @@ public class JaversITCase extends AbstractITCase {
                             .anyMatch(
                                     vc -> ("linkedAccounts[linkedAccountOnNoPropagation," + RESOURCE_NAME_NOPROPAGATION
                                             + "].plainAttrs[cool]").equals(vc.getField())
-                                            && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+                                            && "PROPERTY_REMOVED".equals(vc.getChangeType()))));
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
                             .stream()
                             .anyMatch(vc -> ("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB
                                     + "].plainAttrs[surname]").equals(vc.getField())
-                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+                                    && PropertyChangeTO.PropertyChangeType.PROPERTY_REMOVED.name()
+                                    .equals(vc.getChangeType()))));
             assertTrue(changes.stream()
                     .anyMatch(c -> c.getChanges()
                             .getValueChanges()
                             .stream()
                             .anyMatch(vc -> ("linkedAccounts[testUser02," + RESOURCE_NAME_TESTDB
                                     + "].plainAttrs[aLong]").equals(vc.getField())
-                                    && PropertyChangeType.PROPERTY_REMOVED.name().equals(vc.getChangeType()))));
+                                    && PropertyChangeTO.PropertyChangeType.PROPERTY_REMOVED.name()
+                                    .equals(vc.getChangeType()))));
 
             // changes in relationships and their attributes
             assertTrue(changes.stream()
@@ -680,7 +682,7 @@ public class JaversITCase extends AbstractITCase {
         groupCR.getRelationships().add(new RelationshipTO.Builder("grp_inclusion").otherEnd(HP_PRINTER_KEY).build());
 
         // set user manager bellini
-        groupCR.setUManager(BELLINI_KEY);
+        groupCR.setuManager(BELLINI_KEY);
 
         GroupTO groupTO = createGroup(groupCR).getEntity();
 
@@ -782,7 +784,7 @@ public class JaversITCase extends AbstractITCase {
         // relationships
         anyObjectCR.getRelationships().add(new RelationshipTO.Builder("inclusion").otherEnd(HP_PRINTER_KEY).build());
 
-        anyObjectCR.setGManager(otherchild.getKey());
+        anyObjectCR.setgManager(otherchild.getKey());
 
         AnyObjectTO newPrinter = createAnyObject(anyObjectCR).getEntity();
 

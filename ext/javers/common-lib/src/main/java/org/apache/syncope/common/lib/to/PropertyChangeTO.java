@@ -121,4 +121,11 @@ public class PropertyChangeTO implements BaseBean {
         return oldValues.isEmpty() && newValues.isEmpty();
     }
 
+    public enum PropertyChangeType {
+
+        PROPERTY_ADDED,
+        PROPERTY_REMOVED,
+        PROPERTY_VALUE_CHANGED
+    }
+    
 }
